@@ -1,0 +1,74 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { generateCompletion } from '@/lib/ai';
+
+export const dynamic = 'force-dynamic';
+
+export async function POST(req: NextRequest) {
+    try {
+        const { projectId, type } = await req.json();
+
+        if (!projectId) {
+            return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
+        }
+
+        if (type !== 'TASK' && type !== 'FEEDBACK') {
+            return NextResponse.json({ error: 'Invalid analysis type' }, { status: 400 });
+        }
+
+        // Fetch subsets of data to analyze
+        const fetchRecords = (category: 'TOP_10' | 'BOTTOM_10') =>
+            prisma.dataRecord.findMany({
+                where: { projectId, type, category },
+                take: 20,
+                select: { content: true }
+            });
+
+        const [topData, bottomData] = await Promise.all([
+            fetchRecords('TOP_10'),
+            fetchRecords('BOTTOM_10'),
+        ]);
+
+        console.log(`Analyzing ${type} trends for project ${projectId}:`, {
+            top: topData.length,
+            bottom: bottomData.length,
+        });
+
+        if (!topData.length && !bottomData.length) {
+            return NextResponse.json({ error: `No ${type.toLowerCase()} data available for analysis` }, { status: 400 });
+        }
+
+        const prompt = `
+            Analyze the following ${type.toLowerCase()} dataset from a prompt engineering project.
+            
+            ### TOP 10% ${type}S (High Quality Examples)
+            ${topData.map(t => `- ${t.content}`).join('\n')}
+
+            ### BOTTOM 10% ${type}S (Low Quality Examples)
+            ${bottomData.map(t => `- ${t.content}`).join('\n')}
+
+            Please provide:
+            1. **Qualities of Success**: What makes the Top 10% ${type.toLowerCase()}s succeed?
+            2. **Common Failure Modes**: What are the repeating issues in Bottom 10% ${type.toLowerCase()}s?
+            3. **Actionable Improvement**: One specific strategic recommendation to improve quality in this category.
+            
+            Return the analysis in a structured format with clear headings.
+        `;
+
+        const systemPrompt = `You are an expert AI ${type === 'TASK' ? 'Prompt Engineer' : 'Feedback Analyst'}. Provide concise, high-impact insights.`;
+
+        const analysis = await generateCompletion(prompt, systemPrompt);
+
+        // Save the analysis to the project
+        const updateField = type === 'TASK' ? 'lastTaskAnalysis' : 'lastFeedbackAnalysis';
+        await prisma.project.update({
+            where: { id: projectId },
+            data: { [updateField]: analysis }
+        });
+
+        return NextResponse.json({ analysis });
+    } catch (error: any) {
+        console.error('Trends API Error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
