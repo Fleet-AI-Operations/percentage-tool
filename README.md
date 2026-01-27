@@ -53,6 +53,30 @@ Detailed documentation for developers and users can be found in the `Documentati
 
 Open [http://localhost:3000](http://localhost:3000) to view the application.
 
+### 🐳 Running with Docker (Portable Mode)
+
+The easiest way to run the entire stack (App + Database) without manual setup:
+
+1. **Configure Environment**:
+   Copy `.env.example` to `.env`. The database URL is pre-configured for Docker.
+
+2. **Start Services**:
+   ```bash
+   docker-compose up -d
+   ```
+   This will start the Postgres database and the Next.js app on port 3000.
+
+3. **Initialize DB**:
+   ```bash
+   docker-compose exec app npx prisma db push
+   ```
+
+4. **Stop**:
+   ```bash
+   docker-compose down
+   ```
+
+
 ## 🛠 Tech Stack
 
 - **Framework**: Next.js 15
