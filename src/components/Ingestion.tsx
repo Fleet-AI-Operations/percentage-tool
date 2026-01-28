@@ -28,6 +28,7 @@ interface IngestJob {
     updatedAt: string;
     createdAt: string;
     type: string;
+    skippedDetails?: Record<string, number>;
 }
 
 export default function IngestionPage() {
@@ -208,6 +209,10 @@ export default function IngestionPage() {
 
     return (
         <div className="container" style={{ maxWidth: '900px' }}>
+            <style jsx>{`
+                .tooltip-content { opacity: 0; visibility: hidden; transition: opacity 0.2s; pointer-events: none; }
+                .tooltip-container:hover .tooltip-content { opacity: 1; visibility: visible; }
+            `}</style>
             <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                     <h1 className="premium-gradient" style={{ fontSize: '2.5rem', marginBottom: '8px' }}>Ingest</h1>
@@ -305,8 +310,29 @@ export default function IngestionPage() {
                         <div>
                             <span style={{ opacity: 0.6 }}>Saved:</span> <span style={{ fontWeight: 600 }}>{activeJob.savedCount}</span>
                         </div>
-                        <div>
+                        {/* 
+                            Skip Details Tooltip:
+                            Displays a breakdown of why records were skipped (e.g., Duplicates, Keyword Mismatch)
+                            using the `skippedDetails` JSON from the job.
+                        */}
+                        <div className="tooltip-container" style={{ position: 'relative', cursor: 'help' }}>
                             <span style={{ opacity: 0.6 }}>Skipped:</span> <span style={{ fontWeight: 600 }}>{activeJob.skippedCount}</span>
+                            {activeJob.skippedCount > 0 && activeJob.skippedDetails && (
+                                <div className="tooltip-content" style={{
+                                    position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
+                                    background: 'rgba(0,0,0,0.9)', padding: '8px 12px', borderRadius: '6px',
+                                    width: 'max-content', marginBottom: '8px', zIndex: 10,
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)'
+                                }}>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '4px', borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '2px' }}>Skip Reasons</div>
+                                    {Object.entries(activeJob.skippedDetails).map(([reason, count]) => (
+                                        <div key={reason} style={{ fontSize: '0.7rem', display: 'flex', justifyContent: 'space-between', gap: '12px', whiteSpace: 'nowrap' }}>
+                                            <span style={{ opacity: 0.7 }}>{reason}:</span>
+                                            <span>{count}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                         {activeJob.totalRecords > 0 && (
                             <div>

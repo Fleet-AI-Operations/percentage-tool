@@ -87,9 +87,16 @@ export default function Dashboard() {
     const fetchRecords = async (projectId: string) => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/records?projectId=${projectId}&take=1000`);
-            const data = await res.json();
-            setRecords(data.records || []);
+            // Fetch Top 10% and Bottom 10% specifically to avoid loading "Standard" records
+            const [topRes, bottomRes] = await Promise.all([
+                fetch(`/api/records?projectId=${projectId}&take=500&category=TOP_10`),
+                fetch(`/api/records?projectId=${projectId}&take=500&category=BOTTOM_10`)
+            ]);
+
+            const topData = await topRes.json();
+            const bottomData = await bottomRes.json();
+
+            setRecords([...(topData.records || []), ...(bottomData.records || [])]);
         } catch (err) {
             console.error(err);
             setRecords([]);
@@ -328,23 +335,23 @@ function DataSection({ title, records, type, category, projectId }: {
 
 function ExpandableText({ content }: { content: string }) {
     const [expanded, setExpanded] = useState(false);
-    
+
     // Only make it interactive if it looks long enough to probably be truncated
     // This is a rough heuristic since line-clamp depends on width, but avoids
     // clicks on very short items.
-    const isLikelyLong = content.length > 150; 
+    const isLikelyLong = content.length > 150;
 
     return (
-        <div 
+        <div
             onClick={() => isLikelyLong && setExpanded(!expanded)}
-            style={{ 
-                fontSize: '0.9rem', 
-                color: 'rgba(255,255,255,0.9)', 
-                marginBottom: '12px', 
-                overflow: 'hidden', 
-                display: expanded ? 'block' : '-webkit-box', 
-                WebkitLineClamp: expanded ? 'unset' : 3, 
-                WebkitBoxOrient: 'vertical', 
+            style={{
+                fontSize: '0.9rem',
+                color: 'rgba(255,255,255,0.9)',
+                marginBottom: '12px',
+                overflow: 'hidden',
+                display: expanded ? 'block' : '-webkit-box',
+                WebkitLineClamp: expanded ? 'unset' : 3,
+                WebkitBoxOrient: 'vertical',
                 lineHeight: '1.5',
                 cursor: isLikelyLong ? 'pointer' : 'default',
                 transition: 'all 0.2s'

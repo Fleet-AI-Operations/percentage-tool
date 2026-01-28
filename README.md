@@ -23,7 +23,8 @@ Detailed documentation for developers and users can be found in the `Documentati
 - **🛡️ Flexible AI Providers**: Supports both local AI (LM Studio) for maximum privacy and cloud AI (OpenRouter) for convenience. Switch providers with a single environment variable.
 - **💰 Cost Tracking**: Real-time OpenRouter API cost tracking with per-query costs and account balance display on the dashboard.
 - **🎯 Semantic Search**: Find similar prompts and feedback across projects using vector embeddings (Cosine Similarity).
-- **🛠️ Admin Console**: Centralized management for bulk data wipes, project context switching, and advanced maintenance tasks.
+- **🛠️ Admin Console**: Dynamic AI configuration (Host, Model, Provider), centralized management for bulk data wipes, and detailed system status.
+- **🔍 Transparent Ingestion**: Detailed tracking of skipped records (e.g., duplicates, keyword mismatches) with visual breakdown in the UI.
 - **💎 Premium UI/UX**: Fully responsive, high-fidelity glassmorphism interface with interactive data visualizations and real-time status polling.
 - **🧪 Quality Assurance**: Integrated unit testing (Vitest) and E2E testing (Playwright) suites for robust development.
 
@@ -109,3 +110,4 @@ The easiest way to run the entire stack (App + Database) without manual setup:
 - [ ] **Similarity Clustering**: Implement a view to group similar records by their vector embeddings for bulk analysis. More details and constraints are needed here.
 - [ ] **Advanced Filtering**: Is this something we want? Should we be able to filter by different metadata fields?
 - [ ] **Multi-Model Testing**: Enable a "comparison mode" to run the same alignment check across different LLM models.
+- [ ] **Duplicate Strategy**: Recent ingestion files have contained duplicate task_ids, because those are unique, we need to identify a strategy to handle these. Today duplicates are just skipped on ingestion.
