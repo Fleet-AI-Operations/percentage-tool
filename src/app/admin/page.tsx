@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, ShieldAlert, Trash2, Database, BarChart3, RefreshCcw, Sparkles, AlertTriangle, Loader2, XCircle, CheckCircle2 } from 'lucide-react';
+import { LayoutDashboard, ShieldAlert, Trash2, Database, BarChart3, RefreshCcw, Sparkles, AlertTriangle, Loader2, XCircle, CheckCircle2, Cloud, Server, Settings, Save } from 'lucide-react';
 import Link from 'next/link';
 
 interface Project {
@@ -18,6 +18,24 @@ interface AnalyticsJob {
     createdAt: string;
 }
 
+interface SystemInfo {
+    database: { host: string; port: string };
+    ai: {
+        provider: string;
+        host: string;
+        llmModel: string;
+        embeddingModel: string;
+    };
+}
+
+interface AdminSettings {
+    ai_provider: string;
+    ai_host: string;
+    llm_model: string;
+    embedding_model: string;
+    openrouter_key: string;
+}
+
 export default function AdminConsole() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState<string>('');
@@ -25,8 +43,61 @@ export default function AdminConsole() {
     const [bulkAligning, setBulkAligning] = useState(false);
     const [status, setStatus] = useState<{ type: 'success' | 'error' | 'warning', message: string } | null>(null);
     const [activeJob, setActiveJob] = useState<AnalyticsJob | null>(null);
+    const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    // Fetch projects on load
+    // Settings State
+    const [showSettings, setShowSettings] = useState(false);
+    const [settings, setSettings] = useState<AdminSettings>({
+        ai_provider: 'lmstudio',
+        ai_host: '',
+        llm_model: '',
+        embedding_model: '',
+        openrouter_key: ''
+    });
+
+    const fetchSystemInfo = async () => {
+        try {
+            const res = await fetch('/api/admin/info');
+            if (res.ok) setSystemInfo(await res.json());
+        } catch (err) {
+            console.error('Failed to fetch system info', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadSettings = async () => {
+        try {
+            const res = await fetch('/api/admin/settings');
+            const data = await res.json();
+            setSettings(data);
+            setShowSettings(true);
+        } catch (error) {
+            console.error('Failed to load settings:', error);
+            setStatus({ type: 'error', message: 'Failed to load configuration.' });
+        }
+    };
+
+    const saveSettings = async () => {
+        try {
+            const res = await fetch('/api/admin/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings)
+            });
+
+            if (!res.ok) throw new Error('Failed to save');
+
+            setStatus({ type: 'success', message: 'Configuration saved. Restarting AI service...' });
+            setShowSettings(false);
+            setTimeout(fetchSystemInfo, 1000); // Reload System Info
+        } catch (error) {
+            setStatus({ type: 'error', message: 'Failed to save configuration.' });
+        }
+    };
+
+    // Fetch projects and system info on load
     useEffect(() => {
         const fetchProjects = async () => {
             try {
@@ -41,7 +112,9 @@ export default function AdminConsole() {
                 console.error('Failed to fetch projects', err);
             }
         };
+
         fetchProjects();
+        fetchSystemInfo();
     }, []);
 
     // Polling for active job status
@@ -186,6 +259,67 @@ export default function AdminConsole() {
                     </div>
                 )}
 
+                {/* SYSTEM INFO */}
+                {systemInfo && (
+                    <div className="glass-card" style={{ padding: '24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00ff88', boxShadow: '0 0 10px #00ff88' }}></div>
+                            <h2 style={{ fontSize: '1.2rem', margin: 0 }}>System Status</h2>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '8px' }}>
+                                <h3 style={{ fontSize: '0.9rem', opacity: 0.5, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>Database</h3>
+                                <div style={{ fontSize: '1rem', marginBottom: '4px' }}>PostgreSQL</div>
+                                <div style={{ fontSize: '0.85rem', opacity: 0.6, fontFamily: 'monospace' }}>
+                                    {systemInfo.database.host}:{systemInfo.database.port}
+                                </div>
+                            </div>
+
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '8px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                    <h3 style={{ fontSize: '0.9rem', opacity: 0.5, textTransform: 'uppercase', letterSpacing: '1px', margin: 0 }}>AI Provider</h3>
+                                    <button
+                                        onClick={loadSettings}
+                                        style={{
+                                            background: 'none', border: '1px solid rgba(255,255,255,0.1)',
+                                            padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', color: 'var(--foreground)',
+                                            display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem'
+                                        }}
+                                    >
+                                        <Settings size={14} /> Configure
+                                    </button>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                                    {systemInfo.ai.provider === 'OpenRouter' ? (
+                                        <div style={{ padding: '8px', borderRadius: '6px', background: 'rgba(0,112,243,0.1)', color: '#0070f3' }}>
+                                            <Cloud size={20} />
+                                        </div>
+                                    ) : (
+                                        <div style={{ padding: '8px', borderRadius: '6px', background: 'rgba(0,255,136,0.1)', color: '#00ff88' }}>
+                                            <Server size={20} />
+                                        </div>
+                                    )}
+                                    <div>
+                                        <div style={{ fontSize: '1rem', fontWeight: 600 }}>{systemInfo.ai.provider}</div>
+                                        <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>{systemInfo.ai.host}</div>
+                                    </div>
+                                </div>
+
+                                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <div style={{ fontSize: '0.8rem', opacity: 0.6, marginBottom: '4px' }}>
+                                        <span style={{ opacity: 0.5 }}>Chat:</span> {systemInfo.ai.llmModel}
+                                    </div>
+                                    <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>
+                                        <span style={{ opacity: 0.5 }}>Embed:</span> {systemInfo.ai.embeddingModel}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* PROJECT SELECTION FOR BULK WORK */}
                 <div className="glass-card" style={{ padding: '32px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
@@ -326,6 +460,99 @@ export default function AdminConsole() {
                         {clearing ? <RefreshCcw className="spinner" size={18} /> : 'Wipe All Data & Analytics'}
                     </button>
                 </div>
+
+                {/* SETTINGS MODAL */}
+                {showSettings && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(5px)',
+                        display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
+                    }}>
+                        <div className="glass-card" style={{ width: '500px', padding: '32px', position: 'relative' }}>
+                            <button
+                                onClick={() => setShowSettings(false)}
+                                style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', color: 'var(--foreground)', cursor: 'pointer' }}
+                            >
+                                <XCircle size={24} />
+                            </button>
+
+                            <h2 style={{ fontSize: '1.5rem', marginBottom: '24px' }}>AI Configuration</h2>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8 }}>Provider</label>
+                                    <select
+                                        value={settings.ai_provider}
+                                        onChange={e => setSettings({ ...settings, ai_provider: e.target.value })}
+                                        style={{ width: '100%', padding: '10px', borderRadius: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}
+                                    >
+                                        <option value="lmstudio">LM Studio (Local)</option>
+                                        <option value="openrouter">OpenRouter (Cloud)</option>
+                                    </select>
+                                </div>
+
+                                {settings.ai_provider === 'lmstudio' && (
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8 }}>Host URL</label>
+                                        <input
+                                            type="text"
+                                            value={settings.ai_host}
+                                            onChange={e => setSettings({ ...settings, ai_host: e.target.value })}
+                                            placeholder="http://host.docker.internal:1234/v1"
+                                            style={{ width: '100%', padding: '10px', borderRadius: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}
+                                        />
+                                    </div>
+                                )}
+
+                                {settings.ai_provider === 'openrouter' && (
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8 }}>API Key (Hidden)</label>
+                                        <input
+                                            type="password"
+                                            value={settings.openrouter_key}
+                                            onChange={e => setSettings({ ...settings, openrouter_key: e.target.value })}
+                                            placeholder="sk-or-..."
+                                            style={{ width: '100%', padding: '10px', borderRadius: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}
+                                        />
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8 }}>LLM Model</label>
+                                    <input
+                                        type="text"
+                                        value={settings.llm_model}
+                                        onChange={e => setSettings({ ...settings, llm_model: e.target.value })}
+                                        style={{ width: '100%', padding: '10px', borderRadius: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '8px', opacity: 0.8 }}>Embedding Model</label>
+                                    <input
+                                        type="text"
+                                        value={settings.embedding_model}
+                                        onChange={e => setSettings({ ...settings, embedding_model: e.target.value })}
+                                        style={{ width: '100%', padding: '10px', borderRadius: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}
+                                    />
+                                </div>
+
+                                <div style={{ marginTop: '16px' }}>
+                                    <button
+                                        onClick={saveSettings}
+                                        style={{
+                                            width: '100%', padding: '12px', background: 'var(--accent)',
+                                            color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600,
+                                            display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px'
+                                        }}
+                                    >
+                                        <Save size={18} /> Save Configuration
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

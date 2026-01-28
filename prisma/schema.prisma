@@ -66,7 +66,7 @@ model DataRecord {
   projectId     String
   project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   type          RecordType
-  category      RecordCategory
+  category      RecordCategory?
   source        String         // Tracking field, e.g., "csv:filename.csv" or "api:endpoint"
   content       String         @db.Text
   metadata      Json?          // Stores all original fields from the source file
@@ -97,9 +97,19 @@ model IngestJob {
   totalRecords  Int         @default(0)
   savedCount    Int         @default(0)
   skippedCount  Int         @default(0)
+  skippedDetails Json?
   error         String?     @db.Text
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
   @@map("ingest_jobs")
+}
+
+model SystemSetting {
+  key         String   @id
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_settings")
 }

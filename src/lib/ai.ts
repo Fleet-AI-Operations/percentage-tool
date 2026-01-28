@@ -35,11 +35,48 @@ interface ProviderConfig {
   apiKey?: string;
 }
 
+import { prisma } from './prisma';
+
 /**
  * Detects and returns the active AI provider configuration.
- * Priority: OpenRouter (if key provided) > LM Studio (default)
+ * Priority: Database Settings > OpenRouter (if key provided in env) > LM Studio (default)
  */
-function getProviderConfig(): ProviderConfig {
+async function getProviderConfig(): Promise<ProviderConfig> {
+  // 1. Try to fetch settings from DB
+  try {
+    const settings = await prisma.systemSetting.findMany({
+      where: {
+        key: { in: ['ai_provider', 'ai_host', 'llm_model', 'embedding_model', 'openrouter_key'] }
+      }
+    });
+
+    const getSetting = (k: string) => settings.find(s => s.key === k)?.value;
+
+    const dbProvider = getSetting('ai_provider');
+    if (dbProvider) {
+      // If DB has explicit provider, use it (with fallbacks to env or defaults for standard fields)
+      if (dbProvider === 'openrouter') {
+        return {
+          provider: 'openrouter',
+          baseUrl: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
+          llmModel: getSetting('llm_model') || process.env.OPENROUTER_LLM_MODEL || 'anthropic/claude-3.5-sonnet',
+          embeddingModel: getSetting('embedding_model') || process.env.OPENROUTER_EMBEDDING_MODEL || 'openai/text-embedding-3-small',
+          apiKey: getSetting('openrouter_key') || process.env.OPENROUTER_API_KEY,
+        };
+      } else {
+        return {
+          provider: 'lmstudio',
+          baseUrl: getSetting('ai_host') || process.env.AI_HOST || 'http://localhost:1234/v1',
+          llmModel: getSetting('llm_model') || process.env.LLM_MODEL || 'meta-llama-3-8b-instruct',
+          embeddingModel: getSetting('embedding_model') || process.env.EMBEDDING_MODEL || 'text-embedding-nomic-embed-text-v1.5',
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to fetch system settings:', e);
+  }
+
+  // 2. Fallback to Env vars (Existing logic)
   const openRouterKey = process.env.OPENROUTER_API_KEY;
 
   if (openRouterKey) {
@@ -81,8 +118,8 @@ function getHeaders(config: ProviderConfig): Record<string, string> {
 /**
  * Returns the current active provider name for diagnostics.
  */
-export function getActiveProvider(): AIProvider {
-  return getProviderConfig().provider;
+export async function getActiveProvider(): Promise<AIProvider> {
+  return (await getProviderConfig()).provider;
 }
 
 /**
@@ -100,7 +137,7 @@ export async function getEmbedding(text: string): Promise<number[]> {
  * Supports both LM Studio and OpenRouter providers.
  */
 export async function getEmbeddings(texts: string[]): Promise<number[][]> {
-  const config = getProviderConfig();
+  const config = await getProviderConfig();
 
   // SANITIZE: Remove empty strings and handle malformed inputs to reduce tokenizer warnings.
   // This prevents the "last token is not SEP" warning from common embedding models (like Qwen).
@@ -139,7 +176,15 @@ export async function getEmbeddings(texts: string[]): Promise<number[][]> {
  * Returns content along with token usage and cost information (when available from OpenRouter).
  */
 export async function generateCompletionWithUsage(prompt: string, systemPrompt?: string): Promise<CompletionResult> {
-  const config = getProviderConfig();
+  const config = await getProviderConfig();
+
+  // TRUNCATION STRATEGY:
+  // Large prompts (e.g., analyzing 500+ records) can exceed context limits.
+  // We apply a safe character limit (approx 20k chars ~ 5k tokens) to prevent 400 errors from LM Studio/OpenRouter.
+  const MAX_PROMPT_CHARS = 20000;
+  const truncatedPrompt = prompt.length > MAX_PROMPT_CHARS
+    ? prompt.slice(0, MAX_PROMPT_CHARS) + "\n\n[...Truncated due to length...]"
+    : prompt;
 
   try {
     const response = await fetch(`${config.baseUrl}/chat/completions`, {
@@ -149,7 +194,7 @@ export async function generateCompletionWithUsage(prompt: string, systemPrompt?:
         model: config.llmModel,
         messages: [
           ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-          { role: 'user', content: prompt }
+          { role: 'user', content: truncatedPrompt }
         ],
         temperature: 0.7,
       }),
@@ -214,7 +259,7 @@ export function cosineSimilarity(vecA: number[], vecB: number[]): number {
  * Returns null if not using OpenRouter or if the request fails.
  */
 export async function getOpenRouterBalance(): Promise<BalanceInfo | null> {
-  const config = getProviderConfig();
+  const config = await getProviderConfig();
 
   if (config.provider !== 'openrouter' || !config.apiKey) {
     return null;

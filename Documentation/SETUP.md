@@ -73,6 +73,12 @@ Choose **one** of the following options:
 4. **Start Server**: Start the **Local Server** in LM Studio on port 1234.
 5. **GPU Acceleration**: Recommended for faster vectorization phases.
 
+### Recommended Settings (LM Studio)
+To ensure stable performance and sufficient memory for RAG operations:
+- **Context Length**: Set to **8192** (or minimum 4096). This allows the AI to process large chunks of retrieved feedback.
+- **Token Generation Limit**: Set to **2048** or -1 (Infinite). This prevents responses from being cut off during long analyses.
+- **Flash Attention**: Enable if your hardware supports it (e.g., Apple Silicon, RTX cards) for significantly faster inference.
+
 ### Option B: OpenRouter (Cloud)
 
 1. Create an account at [openrouter.ai](https://openrouter.ai).

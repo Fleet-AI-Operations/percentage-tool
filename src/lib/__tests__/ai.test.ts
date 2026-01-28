@@ -82,13 +82,13 @@ describe('AI Library Utilities', () => {
             // We intentionally re-import to trigger the module to read the env var again if it were cached, 
             // though getActiveProvider reads it on every call, so this is safe.
             const { getActiveProvider } = await import('../ai');
-            expect(getActiveProvider()).toBe('lmstudio');
+            expect(await getActiveProvider()).toBe('lmstudio');
         });
 
         it('should switch to openrouter when OpenRouter key IS present', async () => {
             process.env.OPENROUTER_API_KEY = 'sk-or-test-key';
             const { getActiveProvider } = await import('../ai');
-            expect(getActiveProvider()).toBe('openrouter');
+            expect(await getActiveProvider()).toBe('openrouter');
         });
     });
 });
