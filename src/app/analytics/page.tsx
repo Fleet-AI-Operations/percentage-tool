@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, BarChart3, ArrowRight, MessageSquare, Target, Zap, Sparkles, Bot } from 'lucide-react';
+import { LayoutDashboard, BarChart3, ArrowRight, MessageSquare, Target, Zap, Sparkles, Bot, RefreshCcw } from 'lucide-react';
 import Link from 'next/link';
 
 interface Project {
@@ -29,17 +29,14 @@ interface Match {
 export default function AnalyticsPage() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState<string>('');
-    const [matches, setMatches] = useState<Match[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [threshold, setThreshold] = useState(0.75);
 
     // Isolated Analysis States
     const [taskAnalysis, setTaskAnalysis] = useState<string | null>(null);
     const [feedbackAnalysis, setFeedbackAnalysis] = useState<string | null>(null);
-    const [analyzing, setAnalyzing] = useState(false);
+    const [analyzingType, setAnalyzingType] = useState<'TASK' | 'FEEDBACK' | null>(null);
 
     // Tab State
-    const [activeTab, setActiveTab] = useState<'SIMILARITY' | 'TASK_THEMES' | 'FEEDBACK_THEMES'>('SIMILARITY');
+    const [activeTab, setActiveTab] = useState<'TASK_THEMES' | 'FEEDBACK_THEMES'>('TASK_THEMES');
 
     useEffect(() => {
         fetchProjects();
@@ -47,13 +44,12 @@ export default function AnalyticsPage() {
 
     useEffect(() => {
         if (selectedProjectId) {
-            fetchAnalytics();
             // Load existing isolation analyses
             const project = projects.find(p => p.id === selectedProjectId);
             setTaskAnalysis(project?.lastTaskAnalysis || null);
             setFeedbackAnalysis(project?.lastFeedbackAnalysis || null);
         }
-    }, [selectedProjectId, threshold, projects]);
+    }, [selectedProjectId, projects]);
 
     const fetchProjects = async () => {
         try {
@@ -66,21 +62,10 @@ export default function AnalyticsPage() {
         }
     };
 
-    const fetchAnalytics = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch(`/api/analytics/similarity?projectId=${selectedProjectId}&threshold=${threshold}`);
-            const data = await res.json();
-            setMatches(data.matches || []);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
+
 
     const runLLMCheck = async (type: 'TASK' | 'FEEDBACK') => {
-        setAnalyzing(true);
+        setAnalyzingType(type);
         try {
             const res = await fetch('/api/analytics/trends', {
                 method: 'POST',
@@ -109,7 +94,7 @@ export default function AnalyticsPage() {
             console.error(err);
             alert('Analysis failed. Ensure LM Studio is running.');
         } finally {
-            setAnalyzing(false);
+            setAnalyzingType(null);
         }
     };
 
@@ -118,7 +103,7 @@ export default function AnalyticsPage() {
             <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                     <h1 className="premium-gradient" style={{ fontSize: '2.5rem', marginBottom: '8px' }}>Task Analytics</h1>
-                    <p style={{ color: 'rgba(255,255,255,0.6)' }}>Isolated Data Insights & Cross-Analysis</p>
+                    <p style={{ color: 'rgba(255,255,255,0.6)' }}>Isolated Data Insights</p>
                 </div>
                 <Link href="/" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <LayoutDashboard size={18} /> Dashboard
@@ -141,37 +126,38 @@ export default function AnalyticsPage() {
                             </select>
                         </div>
 
-                        {activeTab === 'SIMILARITY' && (
-                            <div style={{ marginBottom: '32px' }}>
-                                <label style={{ fontSize: '0.8rem', opacity: 0.6, marginBottom: '8px', display: 'block' }}>Similarity Threshold: {(threshold * 100).toFixed(0)}%</label>
-                                <input
-                                    type="range"
-                                    min="0.5"
-                                    max="0.99"
-                                    step="0.01"
-                                    value={threshold}
-                                    onChange={(e) => setThreshold(parseFloat(e.target.value))}
-                                    style={{ width: '100%', cursor: 'pointer' }}
-                                />
-                            </div>
-                        )}
-
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
                             <button
                                 onClick={() => runLLMCheck('TASK')}
-                                disabled={analyzing || !selectedProjectId}
+                                disabled={analyzingType !== null || !selectedProjectId}
                                 className="btn-primary"
                                 style={{ width: '100%', background: 'rgba(255,255,255,0.05)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
                             >
-                                <Target size={16} /> Analyze Tasks
+                                {analyzingType === 'TASK' ? (
+                                    <>
+                                        <RefreshCcw className="spinner" size={16} /> Analyzing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Target size={16} /> Analyze Tasks
+                                    </>
+                                )}
                             </button>
                             <button
                                 onClick={() => runLLMCheck('FEEDBACK')}
-                                disabled={analyzing || !selectedProjectId}
+                                disabled={analyzingType !== null || !selectedProjectId}
                                 className="btn-primary"
                                 style={{ width: '100%', background: 'rgba(255,255,255,0.05)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
                             >
-                                <MessageSquare size={16} /> Analyze Feedback
+                                {analyzingType === 'FEEDBACK' ? (
+                                    <>
+                                        <RefreshCcw className="spinner" size={16} /> Analyzing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <MessageSquare size={16} /> Analyze Feedback
+                                    </>
+                                )}
                             </button>
                         </div>
 
@@ -181,9 +167,7 @@ export default function AnalyticsPage() {
                                 <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Insights Engine</span>
                             </div>
                             <p style={{ fontSize: '0.8rem', opacity: 0.6, lineHeight: '1.4' }}>
-                                {activeTab === 'SIMILARITY'
-                                    ? "Compare tasks and feedback to find semantic correlations."
-                                    : "Identify isolated trends within a specific data category."}
+                                Identify isolated trends within a specific data category.
                             </p>
                         </div>
                     </div>
@@ -193,17 +177,6 @@ export default function AnalyticsPage() {
                 <main>
                     {/* Tab Navigation */}
                     <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', background: 'rgba(255,255,255,0.02)', padding: '4px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <button
-                            onClick={() => setActiveTab('SIMILARITY')}
-                            style={{
-                                flex: 1, padding: '12px', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600, border: 'none', cursor: 'pointer',
-                                background: activeTab === 'SIMILARITY' ? 'rgba(0,112,243,0.1)' : 'transparent',
-                                color: activeTab === 'SIMILARITY' ? 'var(--accent)' : 'rgba(255,255,255,0.4)',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            Cross-Analysis
-                        </button>
                         <button
                             onClick={() => setActiveTab('TASK_THEMES')}
                             style={{
@@ -264,36 +237,6 @@ export default function AnalyticsPage() {
                                     </div>
                                 )}
                             </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'SIMILARITY' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                            {loading ? (
-                                <div style={{ padding: '100px', textAlign: 'center' }}><div className="spinner" /></div>
-                            ) : matches.length === 0 ? (
-                                <div style={{ padding: '100px', textAlign: 'center', opacity: 0.5 }}>No matches found.</div>
-                            ) : (
-                                matches.map((match, i) => (
-                                    <div key={i} className="glass-card" style={{ padding: '0', overflow: 'hidden' }}>
-                                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px 24px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between' }}>
-                                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent)' }}>MATCH #{i + 1}</span>
-                                            <span style={{ color: '#00ff88', fontSize: '0.75rem' }}>{(match.similarity * 100).toFixed(1)}% Similarity</span>
-                                        </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '24px', padding: '24px' }}>
-                                            <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
-                                                <div style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 700, marginBottom: '8px' }}>TASK</div>
-                                                <div style={{ fontSize: '0.9rem' }}>{match.task.content}</div>
-                                            </div>
-                                            <ArrowRight size={20} style={{ alignSelf: 'center', opacity: 0.1 }} />
-                                            <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
-                                                <div style={{ fontSize: '0.65rem', color: '#00ff88', fontWeight: 700, marginBottom: '8px' }}>FEEDBACK</div>
-                                                <div style={{ fontSize: '0.9rem' }}>{match.feedback.content}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
                         </div>
                     )}
                 </main>

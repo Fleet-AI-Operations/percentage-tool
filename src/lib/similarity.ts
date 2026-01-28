@@ -4,37 +4,51 @@ import { cosineSimilarity } from './ai';
 export async function findSimilarRecords(targetId: string, limit: number = 5) {
     const targetRecord = await prisma.dataRecord.findUnique({
         where: { id: targetId },
+        select: { id: true, projectId: true, embedding: true, type: true }
     });
 
     if (!targetRecord || !targetRecord.embedding || targetRecord.embedding.length === 0) {
         throw new Error('Target record not found or has no embedding');
     }
 
-    // If we were using pgvector, we'd do a raw query here.
-    // Since we are using JSON/Float[] in JS for now, we'll pull records and sort.
-    // NOTE: This is NOT efficient for large datasets, but works for a demo.
-    // TODO: Implement pgvector raw query if scale increases.
-
-    const allRecords = await prisma.dataRecord.findMany({
+    // 1. Optimization: Scope to the same project
+    // 2. Optimization: Fetch ONLY id and embedding to minimize memory usage (avoid loading large 'content' fields)
+    // 3. Logic: Only compare matching types (Task <-> Task, Feedback <-> Feedback)
+    const candidates = await prisma.dataRecord.findMany({
         where: {
+            projectId: targetRecord.projectId,
+            type: targetRecord.type,
             id: { not: targetId },
         },
+        select: {
+            id: true,
+            embedding: true
+        }
     });
 
-    // Filter out records without embeddings (since Prisma doesn't support isEmpty on Float[])
-    const recordsWithEmbeddings = allRecords.filter(r => r.embedding && r.embedding.length > 0);
-
-    const results = recordsWithEmbeddings.map(record => ({
-        record,
-        similarity: cosineSimilarity(targetRecord.embedding, record.embedding)
-    }));
-
-    const resolvedResults = await Promise.all(results.map(async (r: { record: any, similarity: Promise<number> }) => ({
-        ...r,
-        similarity: await r.similarity
-    })));
-
-    return resolvedResults
-        .sort((a, b) => b.similarity - a.similarity)
+    // Filter valid embeddings and calculate similarity
+    const scores = candidates
+        .filter(c => c.embedding && c.embedding.length > 0)
+        .map(c => ({
+            id: c.id,
+            score: cosineSimilarity(targetRecord.embedding, c.embedding)
+        }))
+        .sort((a, b) => b.score - a.score)
         .slice(0, limit);
+
+    // 3. Fetch full details only for the top N matches
+    const topRecords = await prisma.dataRecord.findMany({
+        where: {
+            id: { in: scores.map(s => s.id) }
+        }
+    });
+
+    // Map scores back to the full records (preserving order)
+    return scores.map(s => {
+        const record = topRecords.find(r => r.id === s.id);
+        return {
+            record: record!,
+            similarity: s.score
+        };
+    }).filter(item => item.record); // Safety check
 }

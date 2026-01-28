@@ -75,6 +75,9 @@ model DataRecord {
   // AI-generated comparison against the project guidelines
   alignmentAnalysis String?    @db.Text
   
+  // Persisted similarity search results
+  similarityAnalysis Json?
+  
   ingestJobId   String?
 
   createdAt     DateTime       @default(now())

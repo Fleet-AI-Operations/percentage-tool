@@ -183,9 +183,31 @@ function ListContent() {
                                                 }}
                                                 className="hover-bright"
                                             >
-                                                <FileCheck size={12} /> Generate Alignment Score
+                                                <FileCheck size={12} /> Score
                                             </Link>
                                         )}
+
+                                        <Link
+                                            href={`/similarity?id=${record.id}`}
+                                            style={{
+                                                fontSize: '0.7rem',
+                                                background: 'rgba(255, 255, 255, 0.05)',
+                                                color: 'rgba(255, 255, 255, 0.7)',
+                                                fontWeight: 600,
+                                                padding: '4px 10px',
+                                                borderRadius: '20px',
+                                                border: '1px solid rgba(255, 255, 255, 0.05)',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                textDecoration: 'none',
+                                                transition: 'all 0.2s',
+                                                marginLeft: '8px'
+                                            }}
+                                            className="hover-bright"
+                                        >
+                                            <span style={{ fontSize: '10px' }}>🔍</span> Similar
+                                        </Link>
 
                                         <span style={{ fontSize: '0.75rem', opacity: 0.4, marginLeft: '8px' }}>{new Date(record.createdAt).toLocaleDateString()}</span>
                                     </div>

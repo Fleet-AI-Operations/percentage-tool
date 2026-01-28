@@ -96,7 +96,7 @@ export async function generateCompletion(prompt: string, systemPrompt?: string):
  * Math utility for semantic distance.
  * 1.0 = identical meaning, 0.0 = completely unrelated.
  */
-export async function cosineSimilarity(vecA: number[], vecB: number[]): Promise<number> {
+export function cosineSimilarity(vecA: number[], vecB: number[]): number {
   const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
   const magA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
   const magB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));

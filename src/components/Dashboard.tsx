@@ -273,9 +273,29 @@ function DataSection({ title, records, type, category, projectId }: {
                                             }}
                                             className="hover-bright"
                                         >
-                                            <FileCheck size={14} /> Generate Alignment Score
+                                            <FileCheck size={14} /> Score
                                         </Link>
                                     )}
+
+                                    <Link
+                                        href={`/similarity?id=${record.id}`}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            fontSize: '0.75rem',
+                                            color: 'rgba(255, 255, 255, 0.7)',
+                                            fontWeight: 600,
+                                            padding: '4px 8px',
+                                            borderRadius: '6px',
+                                            background: 'rgba(255, 255, 255, 0.05)',
+                                            transition: 'all 0.2s',
+                                            textDecoration: 'none'
+                                        }}
+                                        className="hover-bright"
+                                    >
+                                        <Database size={14} /> Similar
+                                    </Link>
                                 </div>
                             </div>
                         </div>
@@ -288,23 +308,23 @@ function DataSection({ title, records, type, category, projectId }: {
 
 function ExpandableText({ content }: { content: string }) {
     const [expanded, setExpanded] = useState(false);
-    
+
     // Only make it interactive if it looks long enough to probably be truncated
     // This is a rough heuristic since line-clamp depends on width, but avoids
     // clicks on very short items.
-    const isLikelyLong = content.length > 150; 
+    const isLikelyLong = content.length > 150;
 
     return (
-        <div 
+        <div
             onClick={() => isLikelyLong && setExpanded(!expanded)}
-            style={{ 
-                fontSize: '0.9rem', 
-                color: 'rgba(255,255,255,0.9)', 
-                marginBottom: '12px', 
-                overflow: 'hidden', 
-                display: expanded ? 'block' : '-webkit-box', 
-                WebkitLineClamp: expanded ? 'unset' : 3, 
-                WebkitBoxOrient: 'vertical', 
+            style={{
+                fontSize: '0.9rem',
+                color: 'rgba(255,255,255,0.9)',
+                marginBottom: '12px',
+                overflow: 'hidden',
+                display: expanded ? 'block' : '-webkit-box',
+                WebkitLineClamp: expanded ? 'unset' : 3,
+                WebkitBoxOrient: 'vertical',
                 lineHeight: '1.5',
                 cursor: isLikelyLong ? 'pointer' : 'default',
                 transition: 'all 0.2s'

@@ -43,24 +43,24 @@ describe('AI Library Utilities', () => {
     });
 
     describe('cosineSimilarity', () => {
-        it('should correctly calculate similarity between identical vectors', async () => {
+        it('should correctly calculate similarity between identical vectors', () => {
             const vecA = [1, 0, 0];
             const vecB = [1, 0, 0];
-            const similarity = await cosineSimilarity(vecA, vecB);
+            const similarity = cosineSimilarity(vecA, vecB);
             expect(similarity).toBeCloseTo(1.0);
         });
 
-        it('should correctly calculate similarity between orthogonal vectors', async () => {
+        it('should correctly calculate similarity between orthogonal vectors', () => {
             const vecA = [1, 0, 0];
             const vecB = [0, 1, 0];
-            const similarity = await cosineSimilarity(vecA, vecB);
+            const similarity = cosineSimilarity(vecA, vecB);
             expect(similarity).toBe(0);
         });
 
-        it('should return 0 for zero vectors', async () => {
+        it('should return 0 for zero vectors', () => {
             const vecA = [0, 0, 0];
             const vecB = [1, 1, 1];
-            const similarity = await cosineSimilarity(vecA, vecB);
+            const similarity = cosineSimilarity(vecA, vecB);
             expect(similarity).toBe(0);
         });
     });
