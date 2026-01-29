@@ -20,8 +20,8 @@ Create a `.env` file in the root directory. Copy from `.env.example` and configu
 
 **Supabase (Recommended)**:
 1. Create a free project at [supabase.com](https://supabase.com)
-2. Get your database password and connection string from Project Settings -> Database
-3. Get your Project URL and Publishable Key from Project Settings -> API
+2. Get your database password and connection string from Project Settings → Database
+3. Get your Project URL and Publishable Key from Project Settings → API
 
 ```env
 # For Prisma database access
@@ -33,27 +33,16 @@ DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@db.[PROJECT-REF].supabase.co
 # For Supabase client SDK
 NEXT_PUBLIC_SUPABASE_URL="https://[PROJECT-REF].supabase.co"
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="sb_publishable_..."
-
-# For Server Actions (Admin Bypass) - Never use NEXT_PUBLIC_ for this
-SUPABASE_SERVICE_ROLE_KEY="sb_service_role_..."
 ```
 
-### ⚠️ Prisma Schema Standards
-
-This project uses explicit column mapping to ensure compatibility between camelCase identifiers in code and snake_case or case-sensitive identifiers in Postgres:
-
-1. **Always use `@map("column_name")`** for any field that deviates from standard lowercase (especially `createdAt`, `updatedAt`, `ownerId`).
-2. Run `npx prisma generate` after any schema changes to update the client.
-
 **Local PostgreSQL**:
-
 ```env
 DATABASE_URL="postgres://user:password@localhost:5432/pertool"
 ```
 
 ### AI Provider Setup
 
-### Option A: LM Studio (Local - For Development)
+**Option A: LM Studio (Local - For Development)**
 
 ```env
 AI_HOST="http://localhost:1234/v1"
@@ -63,7 +52,7 @@ EMBEDDING_MODEL="text-embedding-qwen3-embedding-0.6b"
 
 *Note: Ensure the model names match exactly what you have loaded in LM Studio.*
 
-### Option B: OpenRouter (Cloud - For Production)
+**Option B: OpenRouter (Cloud - For Production)**
 
 ```env
 OPENROUTER_API_KEY="sk-or-v1-your-key-here"
@@ -105,9 +94,7 @@ Choose **one** of the following options:
 5. **GPU Acceleration**: Recommended for faster vectorization phases.
 
 ### Recommended Settings (LM Studio)
-
 To ensure stable performance and sufficient memory for RAG operations:
-
 - **Context Length**: Set to **8192** (or minimum 4096). This allows the AI to process large chunks of retrieved feedback.
 - **Token Generation Limit**: Set to **2048** or -1 (Infinite). This prevents responses from being cut off during long analyses.
 - **Flash Attention**: Enable if your hardware supports it (e.g., Apple Silicon, RTX cards) for significantly faster inference.
@@ -117,13 +104,10 @@ To ensure stable performance and sufficient memory for RAG operations:
 1. Create an account at [openrouter.ai](https://openrouter.ai).
 2. Generate an API key at [openrouter.ai/keys](https://openrouter.ai/keys).
 3. Add to your `.env` file:
-
    ```env
    OPENROUTER_API_KEY="sk-or-v1-your-key-here"
    ```
-
 4. (Optional) Configure models:
-
    ```env
    OPENROUTER_LLM_MODEL="anthropic/claude-3.5-sonnet"
    OPENROUTER_EMBEDDING_MODEL="openai/text-embedding-3-small"
@@ -131,7 +115,7 @@ To ensure stable performance and sufficient memory for RAG operations:
 
 No local AI setup required - the system will automatically use OpenRouter when the API key is present.
 
-1. **Cost Tracking**: When using OpenRouter, the dashboard will display:
+5. **Cost Tracking**: When using OpenRouter, the dashboard will display:
    - Your current API balance in the header
    - Per-query costs after each AI analysis
 
@@ -152,17 +136,13 @@ Visit [http://localhost:3000](http://localhost:3000) to begin.
 The tool includes a suite of unit and end-to-end tests to ensure reliability.
 
 ### Unit Tests (Vitest)
-
 Unit tests cover core logic, including AI utilities and math helpers.
-
 ```bash
 npm test
 ```
 
 ### End-to-End Tests (Playwright)
-
 E2E tests verify navigation, UI components, and critical workflows.
-
 ```bash
 npm run test:e2e
 ```
