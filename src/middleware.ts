@@ -6,6 +6,12 @@ export async function middleware(request: NextRequest) {
         request,
     })
 
+    // Exhaustive log of ALL environment variable keys to see what Vercel is actually passing to the Edge Runtime
+    const allKeys = Object.keys(process.env)
+    if (request.nextUrl.pathname !== '/favicon.ico') {
+        console.log('[Middleware] All available env keys:', allKeys.filter(k => k.includes('SUPABASE') || k.includes('NEXT_PUBLIC')).join(', '))
+    }
+
     // Unified environment variable extraction
     const supabaseUrl = (process.env.SUPABASE_URL || 
                          process.env.NEXT_PUBLIC_SUPABASE_URL)?.replace(/['"]/g, '')
