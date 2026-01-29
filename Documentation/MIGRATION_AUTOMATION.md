@@ -2,7 +2,7 @@
 
 ## Overview
 
-The project uses GitHub Actions to deploy database migrations automatically to Supabase when changes are merged to the `main` branch.
+The project uses GitHub Actions to automatically sync the Prisma schema to Supabase when changes are merged to the `main` branch.
 
 ## How It Works
 
@@ -10,9 +10,9 @@ The project uses GitHub Actions to deploy database migrations automatically to S
 
 **Workflow:** `.github/workflows/migrate.yml`
 
-1. **Local Development** - Create migrations on your machine
-2. **Commit & Push** - Migration files go into git
-3. **GitHub Action** - Automatically deploys when merged to main
+1. **Local Development** - Edit the Prisma schema
+2. **Commit & Push** - Schema changes go into git
+3. **GitHub Action** - Automatically syncs schema to Supabase using `prisma db push`
 
 ## Local Development (Step-by-Step)
 
@@ -26,29 +26,17 @@ model User {
 }
 ```
 
-### 2. Create Migration (REQUIRED) - This is critical you must run this before committing schema changes
+### 2. Commit Changes
 
 ```bash
-npx prisma migrate dev --name add_user_name_field
-```
-
-This will:
-- Create migration in `prisma/migrations/[timestamp]_add_user_name_field/`
-- Apply to your local database
-- Regenerate Prisma Client
-
-### 3. Stage and Commit Changes
-
-```bash
-git add prisma/schema.prisma prisma/migrations/
+git add prisma/schema.prisma
 git commit -m "feat: add user name field"
 ```
 
-**Important**: Always commit BOTH:
+**Important**: Only the schema file needs to be committed:
 - ✅ `prisma/schema.prisma` (the schema)
-- ✅ `prisma/migrations/` (the migration folder)
 
-### 4. Push
+### 3. Push
 
 ```bash
 git push origin your-branch
@@ -59,8 +47,10 @@ git push origin your-branch
 When your PR is merged to `main`:
 
 1. The GitHub Action (`.github/workflows/migrate.yml`) is triggered automatically
-2. It runs `npx prisma migrate deploy` against the production database
-3. Migrations are applied in order and their status is verified
+2. It runs `npx prisma db push` against the production database
+3. The schema is synchronized and verified
+
+The workflow includes a 5-minute timeout to prevent hanging.
 
 ### Step 1: Navigate to Repository Settings
 
@@ -84,15 +74,17 @@ The workflow will now have access to the `DATABASE_URL` secret when it runs migr
 The workflow is defined in `.github/workflows/migrate.yml` and includes:
 
 - **Triggers**: 
-  - Automatic on push to `main` when Prisma files change
+  - Automatic on push to `main` when Prisma schema changes
   - Manual trigger via GitHub UI (workflow_dispatch)
   
 - **Steps**:
   1. Checkout code
   2. Setup Node.js 20 with npm cache
   3. Install dependencies
-  4. Deploy migrations using `DATABASE_URL` from secrets
-  5. Verify migration status
+  4. Sync schema using `prisma db push` with `DATABASE_URL` from secrets
+  5. Verify completion
+  
+- **Timeout**: 5 minutes to prevent workflow hanging
 
 ## Manual Trigger
 
@@ -106,52 +98,45 @@ You can manually trigger the migration workflow:
 
 ## Safety Features
 
-- **Path filters**: Only runs when Prisma schema or migration files change
-- **Verification step**: Confirms migration status after deployment
+- **Path filters**: Only runs when Prisma schema changes
+- **Verification step**: Confirms schema sync completion
 - **npm ci**: Uses clean install to ensure consistent dependencies
 - **Node caching**: Speeds up workflow execution
+- **Timeout protection**: Automatically cancels after 5 minutes if hung
 
 ## Troubleshooting
 
-### Migration fails in CI
+### Workflow fails in CI
 
 1. Check the Actions tab for error details
 2. Verify `DATABASE_URL` secret is set correctly
-3. Ensure migrations work locally first
-4. Check Supabase connection settings
+3. Check Supabase connection settings
+4. Ensure the timeout hasn't been exceeded
 
-### Migration conflict
+### Schema conflicts
 
-If you see "migration conflict" errors:
+If you have schema conflicts:
 
 1. Pull latest changes from `main`
-2. Reset your migration:
-   ```bash
-   rm -rf prisma/migrations/[your-migration-folder]
-   npx prisma migrate dev --name your_migration_name
-   ```
-3. Test locally and push again
-
-### Manual rollback
-
-If you need to rollback a migration:
-
-1. Connect to your Supabase database
-2. Manually run the down migration or restore from backup
-3. Update the `_prisma_migrations` table if needed
-
-⚠️ **Note**: Prisma doesn't have built-in rollback. Plan migrations carefully and test thoroughly.
+2. Review and merge schema changes
+3. Test locally if possible and push again
 
 ## Best Practices
 
-1. **Always run `npx prisma migrate dev`** before committing schema changes
-2. **Use descriptive migration names** (e.g., `add_user_role_column`)
-3. **Review generated SQL** in `prisma/migrations/[timestamp]_[name]/migration.sql`
-4. **Never edit applied migrations** - create new ones instead
-5. **Coordinate with team** on schema changes to avoid conflicts
-6. **Backup before major changes** - use Supabase's backup features
-7. **Keep migrations small** - easier to review and rollback if needed
-8. **Test locally first** - ensure migrations work before pushing
+1. **Edit `prisma/schema.prisma` directly** - no local migration commands needed
+2. **Use descriptive commit messages** (e.g., `add user role column`)
+3. **Review schema changes carefully** before committing
+4. **Coordinate with team** on schema changes to avoid conflicts
+5. **Backup before major changes** - use Supabase's backup features
+6. **Keep changes small** - easier to review and rollback if needed
+7. **Test in development first** - ensure schema changes work as expected
+
+## Notes
+
+- This workflow uses `prisma db push` instead of traditional migrations
+- No migration history is tracked - the schema file is the source of truth
+- The database schema is synchronized to match `schema.prisma` on each run
+- Data loss protection: Be careful with schema changes that could delete data
 
 ## Related Documentation
 
