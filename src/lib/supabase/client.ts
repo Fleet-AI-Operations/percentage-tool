@@ -2,11 +2,12 @@
 import { createBrowserClient } from '@supabase/ssr'
 
 export function createClient() {
-    const getEnv = (name: string) => process.env[name]?.trim()?.replace(/['"]/g, '')
-
-    const supabaseUrl = getEnv('NEXT_PUBLIC_SUPABASE_URL')
-    const supabaseKey = getEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY') || 
-                        getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY')
+    // IMPORTANT: Next.js requires STATIC property access (process.env.NAME) 
+    // for client-side variables to be correctly bundled. 
+    // Dynamic access like process.env[name] will FAIL in the browser.
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()?.replace(/['"]/g, '')
+    const supabaseKey = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 
+                         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)?.trim()?.replace(/['"]/g, '')
 
     if (typeof window !== 'undefined') {
         console.log('[Supabase Client] URL:', supabaseUrl ? `Set (len: ${supabaseUrl.length})` : 'MISSING')
