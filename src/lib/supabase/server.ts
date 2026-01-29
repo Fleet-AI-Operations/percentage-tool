@@ -5,22 +5,21 @@ import { cookies } from 'next/headers'
 export async function createClient() {
     const cookieStore = await cookies()
 
-    // Support Vercel deployment env vars with multiple fallback names
-    const supabaseUrl = (process.env.SUPABASE_URL || 
-                         process.env.NEXT_PUBLIC_SUPABASE_URL)?.replace(/['"]/g, '')
-    
-    const supabaseKey = (process.env.SUPABASE_PUBLISHABLE_KEY ||
-                        process.env.SUPABASE_ANON_KEY ||
-                        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-                        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)?.replace(/['"]/g, '')
+    // Standardize env var extraction
+    const getEnv = (name: string) => process.env[name]?.trim()?.replace(/['"]/g, '')
 
-    console.log('[Supabase Server] Initializing with URL:', supabaseUrl ? 'Set' : 'MISSING')
-    console.log('[Supabase Server] Initializing with Key:', supabaseKey ? 'Set' : 'MISSING')
+    const supabaseUrl = getEnv('SUPABASE_URL') || getEnv('NEXT_PUBLIC_SUPABASE_URL')
+    const supabaseKey = getEnv('SUPABASE_PUBLISHABLE_KEY') ||
+                        getEnv('SUPABASE_ANON_KEY') ||
+                        getEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY') ||
+                        getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY')
+
+    console.log('[Supabase Server] URL:', supabaseUrl ? `Set (len: ${supabaseUrl.length})` : 'MISSING')
+    console.log('[Supabase Server] Key:', supabaseKey ? `Set (len: ${supabaseKey.length})` : 'MISSING')
 
     if (!supabaseUrl || !supabaseKey) {
-        const errorMsg = 'Error: Supabase project URL or Key is missing. Check your environment variables.'
+        const errorMsg = `Supabase configuration missing. URL: ${supabaseUrl ? 'Set' : 'MISSING'}, Key: ${supabaseKey ? 'Set' : 'MISSING'}.`
         console.error('[Supabase Server]', errorMsg)
-        // Instead of letting Supabase throw a generic error, we throw a specific one
         throw new Error(errorMsg)
     }
 

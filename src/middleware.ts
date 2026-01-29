@@ -6,10 +6,19 @@ export async function middleware(request: NextRequest) {
         request,
     })
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+    // Unified environment variable extraction
+    const supabaseUrl = (process.env.SUPABASE_URL || 
+                         process.env.NEXT_PUBLIC_SUPABASE_URL)?.replace(/['"]/g, '')
+    const supabaseKey = (process.env.SUPABASE_PUBLISHABLE_KEY ||
+                        process.env.SUPABASE_ANON_KEY ||
+                        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+                        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)?.replace(/['"]/g, '')
 
     if (!supabaseUrl || !supabaseKey || !supabaseUrl.startsWith('http')) {
+        // Only log warning if we are actually missing them, to avoid spamming logs
+        if (request.nextUrl.pathname !== '/favicon.ico') {
+            console.warn('[Middleware] Supabase config missing or invalid. URL:', supabaseUrl ? 'Set' : 'MISSING', 'Key:', supabaseKey ? 'Set' : 'MISSING')
+        }
         return supabaseResponse
     }
 
