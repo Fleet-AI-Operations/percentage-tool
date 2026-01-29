@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/**
+ * PROJECT: The primary organizational unit.
+ * All data records, ingestion jobs, and guidelines are scoped to a project.
+ */
+model Project {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  records      DataRecord[]
+  ingestJobs   IngestJob[]
+  analyticsJobs AnalyticsJob[]
+  
+  // AI-generated summary reports (cached for dashboard display)
+  lastTaskAnalysis String?       @db.Text
+  lastFeedbackAnalysis String?   @db.Text
+  
+  // Grounding Data: Guidelines PDF stored as a base64 string for RAG analysis
+  guidelines   String?       @db.Text
+  guidelinesFileName String?
+  
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("projects")
+}
+
+// ... (existing RecordType/RecordCategory)
+
+model AnalyticsJob {
+  id            String      @id @default(cuid())
+  projectId     String
+  project       Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status        String      @default("PENDING") 
+  totalRecords  Int         @default(0)
+  processedCount Int         @default(0)
+  error         String?     @db.Text
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("analytics_jobs")
+}
+
+enum RecordType {
+  TASK        // Individual prompt/request
+  FEEDBACK    // Human or AI evaluation of a task
+}
+
+enum RecordCategory {
+  TOP_10      // High quality/aligned
+  BOTTOM_10   // Low quality/unaligned
+}
+
+/**
+ * DATA RECORD: The core data unit.
+ * Contains the raw text content, original JSON metadata, and vector embeddings.
+ */
+model DataRecord {
+  id            String         @id @default(cuid())
+  projectId     String
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type          RecordType
+  category      RecordCategory?
+  source        String         // Tracking field, e.g., "csv:filename.csv" or "api:endpoint"
+  content       String         @db.Text
+  metadata      Json?          // Stores all original fields from the source file
+  embedding     Float[]        // Vector representation for similarity searches
+  
+  // AI-generated comparison against the project guidelines
+  alignmentAnalysis String?    @db.Text
+  
+  ingestJobId   String?
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("data_records")
+}
+
+/**
+ * INGEST JOB: Background process tracker.
+ * Used to manage long-running CSV uploads and API syncs. 
+ * Allows the UI to poll for real-time progress bars.
+ */
+model IngestJob {
+  id            String      @id @default(cuid())
+  projectId     String
+  project       Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type          RecordType
+  status        String      @default("PENDING") // Status Lifecycle: PENDING -> PROCESSING -> COMPLETED or FAILED
+  totalRecords  Int         @default(0)
+  savedCount    Int         @default(0)
+  skippedCount  Int         @default(0)
+  skippedDetails Json?
+  error         String?     @db.Text
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("ingest_jobs")
+}
+
+model SystemSetting {
+  key         String   @id
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_settings")
+}
