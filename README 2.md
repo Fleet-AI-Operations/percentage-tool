@@ -8,11 +8,9 @@ Detailed documentation for developers and users can be found in the `Documentati
 
 - [**Setup Guide**](./Documentation/SETUP.md) - How to configure your environment, database, and local AI (LM Studio).
 - [**User Guide**](./Documentation/USER_GUIDE.md) - How to manage projects, ingest data, and interpret AI alignment scores.
-- [**User Management**](./Documentation/USER_MANAGEMENT.md) - Approval flows, roles, and access delegation.
 - [**Vercel Deployment**](./Documentation/VERCEL.md) - Instructions for deploying to a Vercel serverless environment.
 
 ### 🏗 Architecture
-
 - [**System Overview**](./Documentation/Architecture/OVERVIEW.md) - High-level tech stack and system diagrams.
 - [**Ingestion & Queuing**](./Documentation/Architecture/INGESTION_FLOW.md) - Deep dive into background processes and memory management.
 - [**AI Strategy**](./Documentation/Architecture/AI_STRATEGY.md) - Logic behind RAG-based alignment checks and embeddings.
@@ -22,7 +20,6 @@ Detailed documentation for developers and users can be found in the `Documentati
 - **🚀 Parallel Ingestion Pipeline**: Decouples high-speed data loading from AI vectorization. Ingest thousands of records instantly while embeddings generate in the background.
 - **🧠 AI-Powered Alignment Analysis**: Automatically evaluate Tasks and Feedback against project-specific guidelines using local LLM models (Llama 3.1, Qwen, etc.).
 - **📊 Bulk Analytics Engine**: Process entire datasets sequentially in the background. Includes real-time progress tracking and job cancellation support.
-- **🛡️ Authentication & RBAC**: Secure login with Supabase Auth, role-based access control (Admin, Manager, User), and an automated approval workflow for new signups.
 - **🛡️ Flexible AI Providers**: Supports both local AI (LM Studio) for maximum privacy and cloud AI (OpenRouter) for convenience. Switch providers with a single environment variable.
 - **💰 Cost Tracking**: Real-time OpenRouter API cost tracking with per-query costs and account balance display on the dashboard.
 - **🎯 Semantic Search**: Find similar prompts and feedback across projects using vector embeddings (Cosine Similarity).
@@ -34,32 +31,26 @@ Detailed documentation for developers and users can be found in the `Documentati
 ## 🚀 Quick Start
 
 1. **Install Dependencies**:
-
    ```bash
    npm install
    ```
 
 2. **Configure Environment**:
-
    Copy `.env.example` to `.env` and update your `DATABASE_URL`. Choose your AI provider:
-
    - **LM Studio** (local): Configure `AI_HOST`, `LLM_MODEL`, `EMBEDDING_MODEL`
    - **OpenRouter** (cloud): Set `OPENROUTER_API_KEY` (get one at [openrouter.ai/keys](https://openrouter.ai/keys))
 
 3. **Initialize Database**:
-
    ```bash
    npx prisma generate
    npx prisma db push
    ```
 
 4. **Run Tests**:
-
    - Unit Tests: `npm test`
    - E2E Tests: `npm run test:e2e`
 
 5. **Launch**:
-
    ```bash
    npm run dev
    ```
@@ -69,7 +60,6 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 ### 💰 Cost Tracking (OpenRouter)
 
 When using OpenRouter as your AI provider, the tool automatically tracks API costs:
-
 - **Per-query costs**: See the cost of each alignment analysis displayed after completion
 - **Account balance**: View your remaining OpenRouter credits in the dashboard header
 
@@ -82,28 +72,24 @@ Cost information appears after each AI operation. Balance refreshes when the das
 The easiest way to run the entire stack (App + Database) without manual setup:
 
 1. **Configure Environment**:
-
    Copy `.env.example` to `.env`. The database URL is pre-configured for Docker.
 
 2. **Start Services**:
-
    ```bash
    docker-compose up -d
    ```
-
    This will start the Postgres database and the Next.js app on port 3000.
 
 3. **Initialize DB**:
-
    ```bash
    docker-compose exec app npx prisma db push
    ```
 
 4. **Stop**:
-
    ```bash
    docker-compose down
    ```
+
 
 ## 🛠 Tech Stack
 

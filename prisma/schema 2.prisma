@@ -13,62 +13,36 @@ datasource db {
 model Project {
   id           String        @id @default(cuid())
   name         String        @unique
-  ownerId      String?       @map("ownerId") @db.Uuid
-  owner        Profile?      @relation(fields: [ownerId], references: [id])
   records      DataRecord[]
   ingestJobs   IngestJob[]
   analyticsJobs AnalyticsJob[]
   
   // AI-generated summary reports (cached for dashboard display)
-  lastTaskAnalysis String?       @map("lastTaskAnalysis") @db.Text
-  lastFeedbackAnalysis String?   @map("lastFeedbackAnalysis") @db.Text
+  lastTaskAnalysis String?       @db.Text
+  lastFeedbackAnalysis String?   @db.Text
   
   // Grounding Data: Guidelines PDF stored as a base64 string for RAG analysis
   guidelines   String?       @db.Text
-  guidelinesFileName String? @map("guidelinesFileName")
+  guidelinesFileName String?
   
-  createdAt    DateTime      @default(now()) @map("createdAt")
-  updatedAt    DateTime      @updatedAt @map("updatedAt")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   @@map("projects")
-}
-
-enum UserRole {
-  PENDING
-  USER
-  MANAGER
-  ADMIN
-}
-
-/**
- * PROFILE: Application-specific user data.
- * The id field must match the Supabase auth.users(id).
- */
-model Profile {
-  id        String   @id @db.Uuid
-  email     String   @unique
-  role      UserRole @default(PENDING)
-  mustResetPassword Boolean @default(false) @map("mustResetPassword")
-  projects  Project[]
-  
-  createdAt DateTime @default(now()) @map("createdAt")
-  updatedAt DateTime @updatedAt @map("updatedAt")
-
-  @@map("profiles")
 }
 
 // ... (existing RecordType/RecordCategory)
 
 model AnalyticsJob {
   id            String      @id @default(cuid())
-  projectId     String      @map("projectId")
+  projectId     String
   project       Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   status        String      @default("PENDING") 
-  totalRecords  Int         @default(0) @map("totalRecords")
-  processedCount Int         @default(0) @map("processedCount")
+  totalRecords  Int         @default(0)
+  processedCount Int         @default(0)
   error         String?     @db.Text
-  createdAt     DateTime    @default(now()) @map("createdAt")
-  updatedAt     DateTime    @updatedAt @map("updatedAt")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   @@map("analytics_jobs")
 }
@@ -89,7 +63,7 @@ enum RecordCategory {
  */
 model DataRecord {
   id            String         @id @default(cuid())
-  projectId     String         @map("projectId")
+  projectId     String
   project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   type          RecordType
   category      RecordCategory?
@@ -97,17 +71,14 @@ model DataRecord {
   content       String         @db.Text
   metadata      Json?          // Stores all original fields from the source file
   embedding     Float[]        // Vector representation for similarity searches
-  hasBeenReviewed Boolean      @default(false) // Whether a human rater has reviewed this record
-  isCategoryCorrect Boolean?    // Rater's agreement: true if they agree with TOP_10/BOTTOM_10 classification
-  reviewedBy    String?        // TODO: Update to authenticated user once auth is implemented
   
   // AI-generated comparison against the project guidelines
-  alignmentAnalysis String?    @map("alignmentAnalysis") @db.Text
+  alignmentAnalysis String?    @db.Text
   
-  ingestJobId   String?        @map("ingestJobId")
+  ingestJobId   String?
 
-  createdAt     DateTime       @default(now()) @map("createdAt")
-  updatedAt     DateTime       @updatedAt @map("updatedAt")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@map("data_records")
 }
@@ -119,17 +90,17 @@ model DataRecord {
  */
 model IngestJob {
   id            String      @id @default(cuid())
-  projectId     String      @map("projectId")
+  projectId     String
   project       Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   type          RecordType
   status        String      @default("PENDING") // Status Lifecycle: PENDING -> PROCESSING -> COMPLETED or FAILED
-  totalRecords  Int         @default(0) @map("totalRecords")
-  savedCount    Int         @default(0) @map("savedCount")
-  skippedCount  Int         @default(0) @map("skippedCount")
-  skippedDetails Json?      @map("skippedDetails")
+  totalRecords  Int         @default(0)
+  savedCount    Int         @default(0)
+  skippedCount  Int         @default(0)
+  skippedDetails Json?
   error         String?     @db.Text
-  createdAt     DateTime    @default(now()) @map("createdAt")
-  updatedAt     DateTime    @updatedAt @map("updatedAt")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   @@map("ingest_jobs")
 }
@@ -138,7 +109,7 @@ model SystemSetting {
   key         String   @id
   value       String
   description String?
-  updatedAt   DateTime @updatedAt @map("updatedAt")
+  updatedAt   DateTime @updatedAt
 
   @@map("system_settings")
 }
