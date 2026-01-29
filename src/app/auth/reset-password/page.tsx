@@ -15,7 +15,7 @@ export default function ResetPasswordPage() {
     const router = useRouter();
     const supabase = createClient();
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: any) => {
         e.preventDefault();
         setLoading(true);
         setError(null);

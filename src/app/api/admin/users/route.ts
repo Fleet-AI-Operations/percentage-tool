@@ -1,5 +1,5 @@
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 
@@ -87,7 +87,6 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
         }
 
-        const { createAdminClient } = await import('@/lib/supabase/server')
         const adminClient = await createAdminClient()
 
         // 1. Create user in Supabase Auth (bypassing confirmation)

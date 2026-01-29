@@ -9,6 +9,7 @@ interface Profile {
     id: string;
     email: string;
     role: 'PENDING' | 'USER' | 'MANAGER' | 'ADMIN';
+    mustResetPassword?: boolean;
     createdAt: string;
 }
 
@@ -42,7 +43,7 @@ export default function UserManagementPage() {
         }
     };
 
-    const handleCreateUser = async (e: React.FormEvent) => {
+    const handleCreateUser = async (e: any) => {
         e.preventDefault();
         setIsCreating(true);
         try {
