@@ -6,6 +6,15 @@ export async function middleware(request: NextRequest) {
         request,
     })
 
+    // EXHAUSTIVE DEBUG LOGS (Temporary)
+    const allKeys = Object.keys(process.env).sort()
+    if (request.nextUrl.pathname !== '/favicon.ico' && !request.nextUrl.pathname.startsWith('/_next')) {
+        console.log('[Middleware] Total keys:', allKeys.length)
+        console.log('[Middleware] Vercel:', process.env.VERCEL)
+        console.log('[Middleware] Keys with SUPABASE/NEXT:', allKeys.filter(k => k.toLowerCase().includes('supabase') || k.toLowerCase().includes('next_public')).join(', '))
+        console.log('[Middleware] All VERCEL_ keys:', allKeys.filter(k => k.startsWith('VERCEL_')).join(', '))
+    }
+
     // Unified environment variable extraction
     const supabaseUrl = (process.env.SUPABASE_URL || 
                          process.env.NEXT_PUBLIC_SUPABASE_URL)?.replace(/['"]/g, '')
@@ -14,9 +23,8 @@ export async function middleware(request: NextRequest) {
                         process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
                         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)?.replace(/['"]/g, '')
 
-    if (!supabaseUrl || !supabaseKey || !supabaseUrl.startsWith('http')) {
-        // Only log warning if we are actually missing them, to avoid spamming logs
-        if (request.nextUrl.pathname !== '/favicon.ico') {
+    if (!supabaseUrl || !supabaseKey) {
+        if (request.nextUrl.pathname !== '/favicon.ico' && !request.nextUrl.pathname.startsWith('/_next')) {
             console.warn('[Middleware] Supabase config missing or invalid. URL:', supabaseUrl ? 'Set' : 'MISSING', 'Key:', supabaseKey ? 'Set' : 'MISSING')
         }
         return supabaseResponse
