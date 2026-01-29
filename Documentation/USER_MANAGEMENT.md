@@ -1,64 +1,46 @@
 # User Management & Access Delegation
 
-In this Supabase + Next.js setup, user management is handled by **Supabase Auth**, while the **application logic** (roles and delegation) is typically managed through custom metadata or a dedicated `profiles` table.
+The Percentage Tool uses a hybrid authentication and authorization system. **Supabase Auth** handles identities (emails/passwords), while a **Prisma-managed `profiles` table** handles application-specific roles and access states.
 
-## 1. Where do users live?
+## 1. Automated Onboarding (The Approval Flow)
 
--   **Supabase (auth schema)**: The `auth.users` table is managed internally by Supabase. It stores emails, passwords, and sessions. You can view these users in the **Supabase Dashboard -> Authentication -> Users**.
--   **Prisma (public schema)**: To store application-specific data (like a user's name, bio, or custom roles), we should create a `Profile` model that links to the Supabase User ID.
+To ensure security, new signups follow a strict approval workflow:
 
-## 2. Managing Roles
+1. Signup: User creates an account via the `/auth/signup` page.
+2. Pending State: The user is assigned the `PENDING` role by default.
+3. Waiting Room: Middleware detects the `PENDING` role and redirects the user to `/waiting-approval`. They cannot access any dashboard features.
+4. Admin Approval: An administrator visits the **User Management** page to review and approve the user.
 
-There are two primary ways to manage roles like "Admin" or "Manager":
+## 2. Access Roles
 
-### Option A: Supabase Custom Claims (Recommended)
-You can store roles directly in the user's `app_metadata`. This is visible in the JWT, meaning it's accessible in the Next.js Middleware and Supabase RLS policies WITHOUT an extra database query.
+Access is governed by the `role` field in the `profiles` table:
 
-**How to delegate:**
-An Admin can call a Supabase Edge Function or a Server Action that updates another user's metadata:
-
-```typescript
-// Admin promoting another user
-const { data, error } = await supabase.auth.admin.updateUserById(
-  'user-id-to-promote',
-  { app_metadata: { role: 'admin' } }
-)
-```
-
-### Option B: Profiles Table
-Create a `profiles` table in your Prisma schema.
-
-```prisma
-model Profile {
-  id     String @id // This matches the Supabase User ID
-  role   String @default("USER") // USER, MANAGER, ADMIN
-  email  String
-}
-```
-
-**How to delegate:**
-Admins simply update the `role` field in the `Profile` table via a Prisma query.
-
-## 3. Delegating Access (Workflow)
-
-To implement delegation for the **Deel Bonus Zone**, follow this flow:
-
-1.  **System Admin**: The first user (typically you) is manually set as `ADMIN` in the Supabase Dashboard.
-2.  **Admin UI**: Create an "Organization Management" page where the Admin can see a list of all users.
-3.  **Promotion**: Beside each user, add a dropdown to change their role (e.g., Change "User" to "Bonus Manager").
-4.  **Verification**:
-    -   **UI level**: The `Header.tsx` only shows the "Bonus Zone" link if `user.app_metadata.role === 'admin'`.
-    -   **API level**: The middleware or server actions check the role before executing logic.
-
-## 4. Summary of Access Levels
-
-| Role | Access |
+| Role | Description |
 | :--- | :--- |
-| **User** | View personal dashboard, own records. |
-| **Manager** | View assigned projects, configure bonus criteria. |
-| **Admin** | Full system access, manage windows, **delegate roles to others**. |
+| **PENDING** | Default for new users. Restricted to the `/waiting-approval` page. |
+| **USER** | Can view data and run analyses. |
+| **MANAGER** | Can manage projects and ingestion jobs. |
+| **ADMIN** | Full system control, including role delegation and user approval. |
 
----
+## 3. Delegation Workflow (Admins)
 
-### Next Step Recommendation
-I recommend implementing a **Profiles** table and a basic **Admin Dashboard** to allow you to manage these roles visually rather than through the console.
+Administrators can manage users via the **Manage -> Users** section:
+
+- Approval: Change a user's role from `PENDING` to `USER` to grant access.
+- Promotion: Elevate trusted users to `MANAGER` or `ADMIN`.
+- Manual Creation: Admins can use the "Create User" feature to manually invite users.
+
+## 4. Security: First-Time Login (Password Reset)
+
+When an admin manually creates a user, or when a reset is required for security:
+
+1. The `mustResetPassword` flag is set to `true` in the user's profile.
+2. **Force Redirect**: Middleware detects this flag and redirects the user to `/auth/reset-password`.
+3. **Action**: The user MUST set a new password.
+4. **Completion**: Once the password is saved, a **Server Action** clears the flag, and the user is granted access to the dashboard.
+
+## 5. Implementation Summary
+
+- Database: `profiles` table in the `public` schema.
+- Middleware: Intercepts requests to check for `PENDING` or `mustResetPassword` states.
+- Server Actions: Securely clear flags and update roles using the `SUPABASE_SERVICE_ROLE_KEY` to bypass Row Level Security (RLS) when necessary.

@@ -38,31 +38,25 @@ export default function ResetPasswordPage() {
                 throw new Error('Supabase client failed to initialize. Please check your NEXT_PUBLIC_SUPABASE_URL environment variable.');
             }
 
-            console.log('[ResetPassword] Attempting Auth password update...');
             // 1. Update Supabase Auth password
             const { error: authError } = await supabase.auth.updateUser({
                 password: password
             });
 
             if (authError) throw authError;
-            console.log('[ResetPassword] Auth password updated successfully');
 
             // 2. Clear reset flag via Server Action
-            console.log('[ResetPassword] Calling clearResetFlagAction...');
             const result = await clearResetFlagAction();
             
             if (!result.success) {
                 throw new Error(result.error || 'Failed to clear password reset flag');
             }
 
-            console.log('[ResetPassword] Flag cleared successfully. Affected rows:', result.count);
-
             setSuccess(true);
             setTimeout(() => {
                 router.push('/');
             }, 2000);
         } catch (err: any) {
-            console.error('[ResetPassword] Critical flow error:', err);
             setError(err.message);
         } finally {
             setLoading(false);
