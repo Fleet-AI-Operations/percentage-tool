@@ -68,6 +68,17 @@ When your PR is merged to `main`:
 2. Click on **Settings** tab
 3. In the left sidebar, click **Secrets and variables** → **Actions**
 
+### Step 2: Create the DATABASE_URL Secret
+
+1. Click the green **New repository secret** button
+2. In the **Name** field, enter: `DATABASE_URL`
+3. In the **Secret** field, paste your Supabase database connection string
+   - You can find this in Supabase: Project Settings → Database → Connection string (choose "Connection pooling" or "URI" format)
+   - Example format: `postgresql://user:password@host:port/database`
+4. Click **Add secret** to save
+
+The workflow will now have access to the `DATABASE_URL` secret when it runs migrations.
+
 ## Workflow File
 
 The workflow is defined in `.github/workflows/migrate.yml` and includes:
