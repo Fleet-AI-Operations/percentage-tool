@@ -8,7 +8,8 @@ export async function middleware(request: NextRequest) {
 
     // Exhaustive log of ALL environment variable keys to see what Vercel is actually passing to the Edge Runtime
     const allKeys = Object.keys(process.env)
-    if (request.nextUrl.pathname !== '/favicon.ico') {
+    if (request.nextUrl.pathname !== '/favicon.ico' && !request.nextUrl.pathname.startsWith('/_next')) {
+        console.log('[Middleware] Total env keys:', allKeys.length)
         console.log('[Middleware] All available env keys:', allKeys.filter(k => k.includes('SUPABASE') || k.includes('NEXT_PUBLIC')).join(', '))
     }
 

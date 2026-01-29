@@ -7,6 +7,8 @@ export async function createClient() {
 
     // Exhaustive log of ALL environment variable keys to see what Vercel is actually passing
     const allKeys = Object.keys(process.env)
+    console.log('[Supabase Server] Total env keys:', allKeys.length)
+    console.log('[Supabase Server] Node Version:', process.version)
     console.log('[Supabase Server] All available env keys:', allKeys.filter(k => k.includes('SUPABASE') || k.includes('NEXT_PUBLIC')).join(', '))
 
     // Direct access instead of dynamic lookup for maximum compatibility
