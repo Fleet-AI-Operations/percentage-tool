@@ -9,7 +9,13 @@ export async function createClient() {
     const allKeys = Object.keys(process.env)
     console.log('[Supabase Server] Total env keys:', allKeys.length)
     console.log('[Supabase Server] Node Version:', process.version)
-    console.log('[Supabase Server] All available env keys:', allKeys.filter(k => k.includes('SUPABASE') || k.includes('NEXT_PUBLIC')).join(', '))
+    console.log('[Supabase Server] Environment Fingerprint:', {
+        isVercel: !!process.env.VERCEL,
+        isDocker: !!process.env.DOCKER_CONTAINER || !!process.env.HOSTNAME?.includes('-'),
+        nodeEnv: process.env.NODE_ENV,
+        vercelEnv: process.env.VERCEL_ENV
+    })
+    console.log('[Supabase Server] Supabase/Next Keys Found:', allKeys.filter(k => k.toLowerCase().includes('supabase') || k.toLowerCase().includes('next_public')).join(', '))
 
     // Direct access instead of dynamic lookup for maximum compatibility
     const supabaseUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL)?.trim()?.replace(/['"]/g, '')

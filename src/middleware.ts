@@ -10,7 +10,12 @@ export async function middleware(request: NextRequest) {
     const allKeys = Object.keys(process.env)
     if (request.nextUrl.pathname !== '/favicon.ico' && !request.nextUrl.pathname.startsWith('/_next')) {
         console.log('[Middleware] Total env keys:', allKeys.length)
-        console.log('[Middleware] All available env keys:', allKeys.filter(k => k.includes('SUPABASE') || k.includes('NEXT_PUBLIC')).join(', '))
+        console.log('[Middleware] Environment Fingerprint:', {
+            isVercel: !!process.env.VERCEL,
+            isEdge: true, // Middleware always runs in Edge or Node-like env in Next.js
+            nodeEnv: process.env.NODE_ENV,
+        })
+        console.log('[Middleware] Supabase/Next Keys Found:', allKeys.filter(k => k.toLowerCase().includes('supabase') || k.toLowerCase().includes('next_public')).join(', '))
     }
 
     // Unified environment variable extraction
