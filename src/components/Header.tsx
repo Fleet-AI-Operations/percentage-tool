@@ -8,16 +8,16 @@ export default async function Header() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) return null
-
-    // Fetch user profile to get the role
-    const profile = await prisma.profile.findUnique({
-        where: { id: user.id }
-    })
+    let profile = null
+    if (user) {
+        profile = await prisma.profile.findUnique({
+            where: { id: user.id }
+        })
+    }
 
     return (
-        <header style={{ 
-            borderBottom: '1px solid var(--border)', 
+        <header style={{
+            borderBottom: '1px solid var(--border)',
             padding: '16px 24px',
             display: 'flex',
             justifyContent: 'space-between',
@@ -40,25 +40,38 @@ export default async function Header() {
                 )}
             </div>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.9rem', color: '#fff' }}>
-                        {user.email}
+            {user ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.9rem', color: '#fff' }}>
+                            {user.email}
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            {profile?.role || 'USER'}
+                        </div>
                     </div>
-                    <div style={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        {profile?.role || 'USER'}
-                    </div>
+                    <form action={signOut}>
+                        <button type="submit" style={{ 
+                            fontSize: '0.9rem', 
+                            color: 'var(--error)',
+                            fontWeight: '500'
+                        }}>
+                            Sign Out
+                        </button>
+                    </form>
                 </div>
-                <form action={signOut}>
-                    <button type="submit" style={{ 
-                        fontSize: '0.9rem', 
-                        color: 'var(--error)',
-                        fontWeight: '500'
-                    }}>
-                        Sign Out
-                    </button>
-                </form>
-            </div>
+            ) : (
+                <Link href="/login" style={{ 
+                    fontSize: '0.9rem', 
+                    color: 'var(--accent)', 
+                    fontWeight: '500',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    background: 'rgba(0, 112, 243, 0.1)'
+                }}>
+                    Sign In
+                </Link>
+            )}
         </header>
     )
 }

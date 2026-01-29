@@ -6,15 +6,6 @@ export async function middleware(request: NextRequest) {
         request,
     })
 
-    // EXHAUSTIVE DEBUG LOGS (Temporary)
-    const allKeys = Object.keys(process.env).sort()
-    if (request.nextUrl.pathname !== '/favicon.ico' && !request.nextUrl.pathname.startsWith('/_next')) {
-        console.log('[Middleware] Total keys:', allKeys.length)
-        console.log('[Middleware] Vercel:', process.env.VERCEL)
-        console.log('[Middleware] Keys with SUPABASE/NEXT:', allKeys.filter(k => k.toLowerCase().includes('supabase') || k.toLowerCase().includes('next_public')).join(', '))
-        console.log('[Middleware] All VERCEL_ keys:', allKeys.filter(k => k.startsWith('VERCEL_')).join(', '))
-    }
-
     // Unified environment variable extraction
     const supabaseUrl = (process.env.SUPABASE_URL || 
                          process.env.NEXT_PUBLIC_SUPABASE_URL)?.replace(/['"]/g, '')
@@ -62,10 +53,9 @@ export async function middleware(request: NextRequest) {
     if (
         !user &&
         !request.nextUrl.pathname.startsWith('/login') &&
-        !request.nextUrl.pathname.startsWith('/auth') &&
-        request.nextUrl.pathname !== '/'
+        !request.nextUrl.pathname.startsWith('/auth')
     ) {
-        // no user, potentially respond by redirecting the user to the login page
+        // no user, redirect to login page
         const url = request.nextUrl.clone()
         url.pathname = '/login'
         return NextResponse.redirect(url)

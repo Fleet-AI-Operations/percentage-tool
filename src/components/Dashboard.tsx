@@ -146,9 +146,6 @@ export default function Dashboard() {
                         <Settings size={18} /> Manage
                     </Link>
 
-                    <Link href="/admin" className="glass-card" style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', color: 'rgba(255,77,77,0.7)' }}>
-                        <ShieldAlert size={18} /> Admin
-                    </Link>
 
                     {aiStatus?.provider === 'openrouter' && aiStatus.balance && (
                         <div className="glass-card" style={{
