@@ -11,6 +11,7 @@ function CompareContent() {
 
     const [loading, setLoading] = useState(true);
     const [evaluation, setEvaluation] = useState<string | null>(null);
+    const [alignmentScore, setAlignmentScore] = useState<number | null>(null);
     const [recordData, setRecordData] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
     const [usage, setUsage] = useState<{
@@ -34,6 +35,7 @@ function CompareContent() {
             const data = await res.json();
             if (res.ok) {
                 setEvaluation(data.evaluation);
+                setAlignmentScore(data.alignmentScore ?? null);
                 setRecordData(data);
                 setUsage(data.usage || null);
                 setProvider(data.provider || '');
@@ -104,6 +106,59 @@ function CompareContent() {
                             {recordData?.recordContent}
                         </p>
                     </div>
+
+                    {/* Alignment Score Card */}
+                    {alignmentScore !== null && (
+                        <div className="glass-card" style={{
+                            padding: '24px 32px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            background: alignmentScore >= 70
+                                ? 'rgba(0, 255, 136, 0.05)'
+                                : alignmentScore >= 40
+                                    ? 'rgba(255, 170, 0, 0.05)'
+                                    : 'rgba(255, 77, 77, 0.05)',
+                            border: `1px solid ${alignmentScore >= 70
+                                ? 'rgba(0, 255, 136, 0.2)'
+                                : alignmentScore >= 40
+                                    ? 'rgba(255, 170, 0, 0.2)'
+                                    : 'rgba(255, 77, 77, 0.2)'}`
+                        }}>
+                            <div>
+                                <div style={{ fontSize: '0.9rem', opacity: 0.6, marginBottom: '4px' }}>Alignment Score</div>
+                                <div style={{
+                                    fontSize: '2.5rem',
+                                    fontWeight: 700,
+                                    color: alignmentScore >= 70
+                                        ? '#00ff88'
+                                        : alignmentScore >= 40
+                                            ? '#ffaa00'
+                                            : '#ff4d4d'
+                                }}>
+                                    {alignmentScore}%
+                                </div>
+                            </div>
+                            <div style={{
+                                padding: '8px 16px',
+                                borderRadius: '8px',
+                                fontSize: '0.85rem',
+                                fontWeight: 600,
+                                background: alignmentScore >= 70
+                                    ? 'rgba(0, 255, 136, 0.1)'
+                                    : alignmentScore >= 40
+                                        ? 'rgba(255, 170, 0, 0.1)'
+                                        : 'rgba(255, 77, 77, 0.1)',
+                                color: alignmentScore >= 70
+                                    ? '#00ff88'
+                                    : alignmentScore >= 40
+                                        ? '#ffaa00'
+                                        : '#ff4d4d'
+                            }}>
+                                {alignmentScore >= 70 ? 'Well Aligned' : alignmentScore >= 40 ? 'Needs Improvement' : 'Poor Alignment'}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Evaluation Results */}
                     <div className="glass-card" style={{ padding: '0', overflow: 'hidden' }}>

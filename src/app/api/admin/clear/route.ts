@@ -22,14 +22,21 @@ export async function POST(req: NextRequest) {
         }
 
         if (target === 'ANALYTICS_ONLY') {
-            // Reset project analysis only
-            await prisma.project.updateMany({
-                data: {
-                    lastTaskAnalysis: null,
-                    lastFeedbackAnalysis: null
-                }
-            });
-            return NextResponse.json({ message: 'All saved analytics cleared successfully.' });
+            // Reset project analysis and record alignment analysis
+            await prisma.$transaction([
+                prisma.project.updateMany({
+                    data: {
+                        lastTaskAnalysis: null,
+                        lastFeedbackAnalysis: null
+                    }
+                }),
+                prisma.dataRecord.updateMany({
+                    data: {
+                        alignmentAnalysis: null
+                    }
+                })
+            ]);
+            return NextResponse.json({ message: 'All saved analytics and alignment analysis cleared successfully.' });
         }
 
         return NextResponse.json({ error: 'Invalid clear target' }, { status: 400 });

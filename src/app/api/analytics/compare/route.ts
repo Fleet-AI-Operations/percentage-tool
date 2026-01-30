@@ -32,8 +32,13 @@ export async function POST(req: NextRequest) {
 
         // OPTIMIZATION: Return cached analysis if available to save LLM tokens.
         if (record.alignmentAnalysis && !forceRegenerate) {
+            // Extract score from cached analysis
+            const scoreMatch = record.alignmentAnalysis.match(/ALIGNMENT_SCORE:\s*(\d+)/i);
+            const alignmentScore = scoreMatch ? parseInt(scoreMatch[1], 10) : null;
+
             return NextResponse.json({
                 evaluation: record.alignmentAnalysis,
+                alignmentScore,
                 recordContent: record.content,
                 projectName: record.project.name,
                 recordType: record.type,
@@ -73,18 +78,22 @@ export async function POST(req: NextRequest) {
         // 3. AI EVALUATE: Construct the prompt with project context.
         const prompt = `
             Evaluate the following ${record.type === 'TASK' ? 'prompt' : 'feedback'} against the provided project guidelines.
-            
+
             ### PROJECT GUIDELINES
             ${guidelinesText}
 
             ### CONTENT TO EVALUATE
             ${record.content}
 
-            Please provide:
-            1. **Guideline Alignment Score (0-100)**: How well does this follow the guidelines?
-            2. **Detailed Analysis**: A breakdown of which guidelines were followed and which were missed.
-            3. **Suggested Improvements**: How could this be modified to better align with the guidelines?
-            
+            IMPORTANT: You MUST start your response with EXACTLY this format on the first line:
+            ALIGNMENT_SCORE: [number]
+
+            Where [number] is an integer between 0 and 100 representing how well this follows the guidelines.
+
+            Then provide:
+            1. **Detailed Analysis**: A breakdown of which guidelines were followed and which were missed.
+            2. **Suggested Improvements**: How could this be modified to better align with the guidelines?
+
             Return the evaluation in a structured format with clear headings.
         `;
 
@@ -92,6 +101,10 @@ export async function POST(req: NextRequest) {
 
         // CALL LLM
         const result = await generateCompletionWithUsage(prompt, systemPrompt);
+
+        // Extract alignment score from response
+        const scoreMatch = result.content.match(/ALIGNMENT_SCORE:\s*(\d+)/i);
+        const alignmentScore = scoreMatch ? parseInt(scoreMatch[1], 10) : null;
 
         // 4. PERSISTENCE: Save the result back to the record for future fast-loads.
         await prisma.dataRecord.update({
@@ -101,6 +114,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({
             evaluation: result.content,
+            alignmentScore,
             recordContent: record.content,
             projectName,
             recordType: record.type,

@@ -82,18 +82,22 @@ async function runBulkAlignment(jobId: string, projectId: string) {
 
             const prompt = `
                 Evaluate the following ${record.type === 'TASK' ? 'prompt' : 'feedback'} against the provided project guidelines.
-                
+
                 ### PROJECT GUIDELINES
                 ${guidelinesText}
 
                 ### CONTENT TO EVALUATE
                 ${record.content}
 
-                Please provide:
-                1. **Guideline Alignment Score (0-100)**: How well does this follow the guidelines?
-                2. **Detailed Analysis**: A breakdown of which guidelines were followed and which were missed.
-                3. **Suggested Improvements**: How could this be modified to better align with the guidelines?
-                
+                IMPORTANT: You MUST start your response with EXACTLY this format on the first line:
+                ALIGNMENT_SCORE: [number]
+
+                Where [number] is an integer between 0 and 100 representing how well this follows the guidelines.
+
+                Then provide:
+                1. **Detailed Analysis**: A breakdown of which guidelines were followed and which were missed.
+                2. **Suggested Improvements**: How could this be modified to better align with the guidelines?
+
                 Return the evaluation in a structured format with clear headings.
             `;
 

@@ -43,11 +43,35 @@ export default async function Header() {
                 <Link href="/" style={{ fontSize: '1.2rem', fontWeight: 'bold' }} className="premium-gradient">
                     Percentage Tool
                 </Link>
-                
-                {profile?.role === 'ADMIN' && (
-                    <Link href="/admin/users" style={{ fontSize: '0.9rem', color: 'var(--accent)', fontWeight: '500' }}>
-                        Admin
-                    </Link>
+
+                {user && (
+                    <nav style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <Link href="/analytics" style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', fontWeight: '500' }}>
+                            Analytics
+                        </Link>
+                        <Link href="/records" style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', fontWeight: '500' }}>
+                            Records
+                        </Link>
+                        <Link href="/topbottom10" style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', fontWeight: '500' }}>
+                            Top/Bottom 10
+                        </Link>
+                        <Link href="/ingest" style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', fontWeight: '500' }}>
+                            Ingest
+                        </Link>
+                        <Link href="/manage" style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', fontWeight: '500' }}>
+                            Manage
+                        </Link>
+                        {profile?.role === 'ADMIN' && (
+                            <>
+                                <Link href="/admin" style={{ fontSize: '0.85rem', color: 'var(--accent)', fontWeight: '500' }}>
+                                    Admin
+                                </Link>
+                                <Link href="/admin/users" style={{ fontSize: '0.85rem', color: 'var(--accent)', fontWeight: '500' }}>
+                                    Users
+                                </Link>
+                            </>
+                        )}
+                    </nav>
                 )}
             </div>
             
