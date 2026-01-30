@@ -1,16 +1,14 @@
 /**
  * Ingestion Hub - Flexible data ingestion system for CSV/API sources
- * 
- * Key Features:
- * - Multi-column content detection (feedback, prompt, text, etc.)
- * - Flexible rating detection (top_10, Top 10%, numerical scores, etc.)
- * - Type-aware duplicate prevention (TASK vs FEEDBACK)
- * - Parallel processing with chunking for large datasets
  */
 import { parse } from 'csv-parse/sync';
 import { prisma } from './prisma';
 import { getEmbeddings } from './ai';
 import { RecordType, RecordCategory } from '@prisma/client';
+import { TaskMetadata } from './types';
+
+export type { TaskMetadata } from './types';
+export { parseAvgScore, formatAvgScorePercent, getMetadataField } from './types';
 
 export interface IngestOptions {
     projectId: string;
@@ -22,9 +20,6 @@ export interface IngestOptions {
 
 const payloadCache: Record<string, { type: 'CSV' | 'API', payload: string, options: IngestOptions }> = {};
 
-/**
- * ENTRY POINT: startBackgroundIngest
- */
 export async function startBackgroundIngest(type: 'CSV' | 'API', payload: string, options: IngestOptions) {
     const job = await prisma.ingestJob.create({
         data: {
@@ -39,11 +34,6 @@ export async function startBackgroundIngest(type: 'CSV' | 'API', payload: string
     return job.id;
 }
 
-/**
- * QUEUE PROCESSOR: processJobs
- * Manages Phase 1 (Data Loading). This phase can run in parallel with Phase 2 (Vectorizing).
- * However, we still only allow one PROCESSING job per project to ensure DB write order.
- */
 async function processJobs(projectId: string) {
     const activeProcessing = await prisma.ingestJob.findFirst({
         where: { projectId, status: 'PROCESSING' }
@@ -56,7 +46,7 @@ async function processJobs(projectId: string) {
                 data: { status: 'FAILED', error: 'Job interrupted by server restart.' }
             });
         } else {
-            return; // Wait for the active data load to finish
+            return;
         }
     }
 
@@ -99,7 +89,6 @@ async function processJobs(projectId: string) {
 
         await processAndStore(records, cache.options, nextJob.id);
 
-        // Phase 2: Vectorization (Optional)
         if (cache.options.generateEmbeddings) {
             await prisma.ingestJob.update({
                 where: { id: nextJob.id },
@@ -126,23 +115,11 @@ async function processJobs(projectId: string) {
     }
 }
 
-/**
- * Phase 2: Vectorization
- * Iterates through records in the project that lack embeddings and generates them using the active AI provider.
- * 
- * Note: Scoped to the Project ID. This serves as a self-healing mechanism: any record in the project
- * missing an embedding (from this job or previous failed jobs) will be processed.
- */
 async function vectorizeJob(jobId: string, projectId: string) {
     const RECORDS_BATCH_SIZE = 50;
-
-    // Fetch records that need embeddings (empty arrays)
-    // We prioritize records with empty embeddings to ensure 100% coverage.
-    // Using cursor-based pagination for stability during updates.
-    let cursor: string | undefined;
+    const PLACEHOLDER_EMBEDDING = [0];
 
     while (true) {
-        // Check for cancellation
         const job = await prisma.ingestJob.findUnique({ where: { id: jobId }, select: { status: true } });
         if (job?.status === 'CANCELLED') break;
 
@@ -152,41 +129,43 @@ async function vectorizeJob(jobId: string, projectId: string) {
                 embedding: { equals: [] }
             },
             take: RECORDS_BATCH_SIZE,
-            cursor: cursor ? { id: cursor } : undefined,
-            skip: cursor ? 1 : 0,
-            orderBy: { id: 'asc' } // Stable ordering
+            orderBy: { id: 'asc' }
         });
 
         if (batch.length === 0) break;
 
-        // Generate embeddings
-        const contents = batch.map(r => r.content);
-        const embeddings = await getEmbeddings(contents);
+        try {
+            const contents = batch.map(r => r.content);
+            const embeddings = await getEmbeddings(contents);
 
-        // Save back to DB
-        for (let i = 0; i < batch.length; i++) {
-            const vector = embeddings[i];
-            if (vector && vector.length > 0) {
+            for (let i = 0; i < batch.length; i++) {
+                const vector = embeddings[i];
+                if (vector && vector.length > 0) {
+                    await prisma.dataRecord.update({
+                        where: { id: batch[i].id },
+                        data: { embedding: vector }
+                    });
+                } else {
+                    console.warn(`Failed to embed record ${batch[i].id}`);
+                    await prisma.dataRecord.update({
+                        where: { id: batch[i].id },
+                        data: { embedding: PLACEHOLDER_EMBEDDING }
+                    });
+                }
+            }
+        } catch (err) {
+            console.error(`Batch vectorization failed: ${err}`);
+            for (const record of batch) {
                 await prisma.dataRecord.update({
-                    where: { id: batch[i].id },
-                    data: { embedding: vector }
+                    where: { id: record.id },
+                    data: { embedding: PLACEHOLDER_EMBEDDING }
                 });
             }
+            break;
         }
-
-        cursor = batch[batch.length - 1].id;
     }
 }
 
-/**
- * Phase 1: Data Loading
- * Parses records, filters by content/keywords, detects categories, and prevents duplicates.
- * 
- * New Feature: Detailed Skip Tracking
- * - Tracks 'Keyword Mismatch' (filtered out by user keywords)
- * - Tracks 'Duplicate ID' (existing Task ID or Feedback ID in project)
- * - Updates `IngestJob.skippedDetails` JSON for UI visibility.
- */
 export async function processAndStore(records: any[], options: IngestOptions, jobId: string) {
     const { projectId, source, type, filterKeywords } = options;
     const CHUNK_SIZE = 100;
@@ -196,7 +175,6 @@ export async function processAndStore(records: any[], options: IngestOptions, jo
     for (let i = 0; i < records.length; i += CHUNK_SIZE) {
         const chunk = records.slice(i, i + CHUNK_SIZE);
 
-        // Check for cancellation
         const currentJob = await prisma.ingestJob.findUnique({
             where: { id: jobId },
             select: { status: true, skippedDetails: true }
@@ -207,30 +185,36 @@ export async function processAndStore(records: any[], options: IngestOptions, jo
         const chunkSkipDetails: Record<string, number> = {};
 
         const validChunk: { record: any, content: string, category: RecordCategory | null }[] = [];
+        const CONTENT_FIELDS = ['prompt', 'feedback_content', 'feedback', 'content', 'body', 'task_content', 'text', 'message', 'instruction', 'response'];
 
-        // 1. FILTER: Content, Ratings, Keywords
         for (let j = 0; j < chunk.length; j++) {
             const record = chunk[j];
-
-            // --- Content Extraction ---
             let content = '';
+            let contentFieldUsed: string | null = null;
+
             if (typeof record === 'string') {
                 content = record;
             } else {
-                content = record.feedback_content || record.feedback || record.prompt ||
-                    record.content || record.body || record.task_content ||
-                    record.text || record.message || record.instruction || record.response;
+                for (const field of CONTENT_FIELDS) {
+                    if (record[field] && String(record[field]).length > 0) {
+                        content = record[field];
+                        contentFieldUsed = field;
+                        break;
+                    }
+                }
 
                 if (!content || content.length < 10) {
                     const textFields = Object.entries(record)
-                        .filter(([key, val]) => typeof val === 'string' && String(val).length > 10)
+                        .filter(([_, val]) => typeof val === 'string' && String(val).length > 10)
                         .sort((a, b) => String(b[1]).length - String(a[1]).length);
-                    if (textFields.length > 0) content = String(textFields[0][1]);
+                    if (textFields.length > 0) {
+                        content = String(textFields[0][1]);
+                        contentFieldUsed = textFields[0][0];
+                    }
                 }
                 if (!content) content = JSON.stringify(record);
             }
 
-            // --- Rating Detection ---
             let category: RecordCategory | null = null;
             const ratingValue = record.prompt_quality_rating || record.feedback_quality_rating || record.quality_rating ||
                 record.rating || record.category || record.label || record.score || record.avg_score;
@@ -253,17 +237,21 @@ export async function processAndStore(records: any[], options: IngestOptions, jo
                 }
             }
 
-            // --- Keyword Filtering ---
             if (filterKeywords?.length && !filterKeywords.some(k => content.toLowerCase().includes(k.toLowerCase()))) {
                 skippedCount++;
                 chunkSkipDetails['Keyword Mismatch'] = (chunkSkipDetails['Keyword Mismatch'] || 0) + 1;
                 continue;
             }
 
-            validChunk.push({ record, content, category });
+            let cleanRecord = record;
+            if (typeof record === 'object' && contentFieldUsed) {
+                const { [contentFieldUsed]: _, ...rest } = record;
+                cleanRecord = rest;
+            }
+
+            validChunk.push({ record: cleanRecord, content, category });
         }
 
-        // 2. DUPLICATE DETECTION
         const uniqueness = await Promise.all(validChunk.map(async (v) => {
             const taskId = v.record.task_id || v.record.id || v.record.uuid || v.record.record_id;
             if (!taskId) return true;
@@ -290,24 +278,27 @@ export async function processAndStore(records: any[], options: IngestOptions, jo
         const finalChunk = validChunk.filter((_, idx) => uniqueness[idx]);
         skippedCount += (validChunk.length - finalChunk.length);
 
-        // Merge details
         Object.entries(chunkSkipDetails).forEach(([reason, count]) => {
             currentDetails[reason] = (currentDetails[reason] || 0) + count;
         });
 
-        await Promise.all(finalChunk.map(v =>
-            prisma.dataRecord.create({
+        await Promise.all(finalChunk.map(v => {
+            // CRITICAL FIX: Inject ingestJobId into metadata so we can trace and delete later
+            const metadataPayload = typeof v.record === 'object' ? { ...v.record } : { value: v.record };
+            metadataPayload.ingestJobId = jobId;
+
+            return prisma.dataRecord.create({
                 data: {
                     projectId,
                     type,
                     category: v.category,
                     source,
                     content: v.content,
-                    metadata: typeof v.record === 'object' ? v.record : { value: v.record },
+                    metadata: metadataPayload,
                     embedding: []
                 }
-            })
-        ));
+            });
+        }));
 
         savedCount += finalChunk.length;
         await prisma.ingestJob.update({

@@ -62,13 +62,14 @@ async function runBulkAlignment(jobId: string, projectId: string) {
 
         if (!guidelinesText) throw new Error('Could not parse guidelines PDF.');
 
-        // 2. FETCH and PROCESS in sequence (LLM is usually the bottleneck, don't overwhelm local host)
+        // 2. FETCH and PROCESS in sequence
         const recordsToProcess = await prisma.dataRecord.findMany({
             where: { projectId, alignmentAnalysis: null },
             orderBy: { createdAt: 'desc' }
         });
 
-        const systemPrompt = `You are an expert AI Alignment Lead and Quality Assurance Analyst for the ${project.name} project.`;
+        // --- UPDATED SYSTEM PROMPT: Enforce "Engine" persona ---
+        const systemPrompt = `You are an Automated Compliance Engine for Project ${project.name}. You are NOT a creative writer. Your job is to binary-match content against guidelines and output raw data followed by reasoning. You must strictly adhere to the requested output format.`;
 
         for (let i = 0; i < recordsToProcess.length; i++) {
             // CHECK FOR CANCELLED STATUS periodically
@@ -80,26 +81,39 @@ async function runBulkAlignment(jobId: string, projectId: string) {
 
             const record = recordsToProcess[i];
 
+            // --- UPDATED USER PROMPT: Recency Bias + Negative Constraints ---
             const prompt = `
-                Evaluate the following ${record.type === 'TASK' ? 'prompt' : 'feedback'} against the provided project guidelines.
+=== REFERENCE GUIDELINES ===
+${guidelinesText}
+=== END OF GUIDELINES ===
 
-                ### PROJECT GUIDELINES
-                ${guidelinesText}
+=== CONTENT TO EVALUATE ===
+"""
+${record.content}
+"""
+=== END OF CONTENT ===
 
-                ### CONTENT TO EVALUATE
-                ${record.content}
+You must evaluate the CONTENT above against the REFERENCE GUIDELINES.
 
-                IMPORTANT: You MUST start your response with EXACTLY this format on the first line:
-                ALIGNMENT_SCORE: [number]
+### STRICT INSTRUCTIONS:
+1.  **Calculate an Alignment Score** from 0 to 100.
+    * 0 = Complete violation.
+    * 100 = Perfect compliance.
+    * **DO NOT USE A 1-5 SCALE.** You must use 0-100 integers only.
+2.  **Output Format**:
+    * Start your response EXACTLY with: "ALIGNMENT_SCORE: [number]"
+    * Do NOT add intro text like "Here is the report" or "AI Evaluation".
+    * Do NOT format the score line with Markdown (no bold **, no headers #).
 
-                Where [number] is an integer between 0 and 100 representing how well this follows the guidelines.
+### REQUIRED RESPONSE TEMPLATE:
+ALIGNMENT_SCORE: <Integer 0-100>
 
-                Then provide:
-                1. **Detailed Analysis**: A breakdown of which guidelines were followed and which were missed.
-                2. **Suggested Improvements**: How could this be modified to better align with the guidelines?
+## Detailed Analysis
+[Bulleted list of which guidelines were followed vs violated]
 
-                Return the evaluation in a structured format with clear headings.
-            `;
+## Suggested Improvements
+[Specific actionable changes to fix the content]
+`;
 
             try {
                 const evaluation = await generateCompletion(prompt, systemPrompt);

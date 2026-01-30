@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Folder, Settings, Database, BarChart3, ShieldAlert, FileCheck, Sparkles, Wallet } from 'lucide-react';
 import Link from 'next/link';
+import { TaskMetadata, parseAvgScore } from '@/lib/types';
 
 interface Project {
     id: string;
@@ -15,7 +16,7 @@ interface Record {
     content: string;
     type: 'TASK' | 'FEEDBACK';
     category: 'TOP_10' | 'BOTTOM_10';
-    metadata: any;
+    metadata: TaskMetadata | null;
     alignmentAnalysis?: string | null;
     createdAt: string;
 }
@@ -281,8 +282,8 @@ function DataSection({ title, records, type, category, projectId }: {
                                             gap: '6px'
                                         }}>
                                             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: record.metadata?.avg_score !== undefined ? '#00ff88' : 'rgba(255, 255, 255, 0.3)' }}></div>
-                                            Quality: {record.metadata?.avg_score !== undefined
-                                                ? `${(parseFloat(record.metadata.avg_score) * 1).toFixed(0)}%`
+                                            Model Score: {record.metadata?.avg_score !== undefined
+                                                ? `${(parseFloat(String(record.metadata.avg_score)) * 100).toFixed(0)}%`
                                                 : 'N/A'}
                                         </div>
                                     )}

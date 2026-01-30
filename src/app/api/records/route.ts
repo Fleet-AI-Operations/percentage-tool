@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { findSimilarRecords } from '@/lib/similarity';
+import { TaskMetadata } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,7 @@ interface DataRecordRow {
     category: string;
     source: string;
     content: string;
-    metadata: Record<string, unknown> | null;
+    metadata: TaskMetadata | null;
     embedding: number[] | null;
     hasBeenReviewed: boolean;
     isCategoryCorrect: boolean | null;

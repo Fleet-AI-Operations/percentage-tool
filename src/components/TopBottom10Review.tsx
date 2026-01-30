@@ -3,22 +3,32 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Check, X } from "lucide-react";
+import { TaskMetadata } from "@/lib/types";
 
 interface ReviewRecord {
   id: string;
   content: string;
   category: "TOP_10" | "BOTTOM_10";
   source: string;
-  metadata: Record<string, any> | null;
+  metadata: TaskMetadata | null;
   alignmentAnalysis: string | null;
   isCategoryCorrect: boolean | null;
   reviewedBy: string | null;
 }
 
+interface Project {
+  id: string;
+  name: string;
+}
+
 export default function TopBottom10Review() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const projectId = searchParams.get("projectId");
+  const urlProjectId = searchParams.get("projectId");
+
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(urlProjectId || "");
+  const projectId = selectedProjectId;
 
   const [category, setCategory] = useState<"TOP_10" | "BOTTOM_10">("TOP_10");
   const [allRecords, setAllRecords] = useState<ReviewRecord[]>([]);
@@ -39,9 +49,29 @@ export default function TopBottom10Review() {
     return hovered === btnCategory ? "#374151" : "transparent";
   };
 
+  // Fetch projects on mount
   useEffect(() => {
-    fetchRecords();
-  }, [projectId]);
+    const fetchProjects = async () => {
+      try {
+        const res = await fetch("/api/projects");
+        const data = await res.json();
+        setProjects(data);
+        // Auto-select first project if none selected
+        if (data.length > 0 && !selectedProjectId) {
+          setSelectedProjectId(data[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to fetch projects", err);
+      }
+    };
+    fetchProjects();
+  }, []);
+
+  useEffect(() => {
+    if (selectedProjectId) {
+      fetchRecords();
+    }
+  }, [selectedProjectId]);
 
   const fetchRecords = async () => {
     if (!projectId || projectId.trim() === "" || projectId === "undefined") {
@@ -70,7 +100,7 @@ export default function TopBottom10Review() {
       // Set initial category to whichever has records (prioritizing TOP_10)
       const hasTopRecords = data.records.some((r: ReviewRecord) => r.category === "TOP_10");
       const hasBottomRecords = data.records.some((r: ReviewRecord) => r.category === "BOTTOM_10");
-      
+
       setCategory(hasTopRecords ? "TOP_10" : "BOTTOM_10");
       setCurrentIndex(0);
     } catch (err) {
@@ -115,7 +145,7 @@ export default function TopBottom10Review() {
         // No more records in this category, switch to the other one if it has records
         const otherCategory = category === "TOP_10" ? "BOTTOM_10" : "TOP_10";
         const hasOtherRecords = newAllRecords.some((r) => r.category === otherCategory);
-        
+
         if (hasOtherRecords) {
           setCategory(otherCategory);
         }
@@ -145,11 +175,11 @@ export default function TopBottom10Review() {
   return (
     <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 20px" }}>
       <div style={{
-          marginBottom: "20px",
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-        }}
+        marginBottom: "20px",
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+      }}
       >
         <button
           onClick={() => router.push("/")}
@@ -178,7 +208,54 @@ export default function TopBottom10Review() {
         </h1>
       </div>
 
-      {loading ? (
+      {/* Project Selector */}
+      <div style={{ marginBottom: "20px" }}>
+        <label style={{ fontSize: "0.8rem", opacity: 0.6, marginBottom: "8px", display: "block" }}>
+          Select Project
+        </label>
+        <select
+          value={selectedProjectId}
+          onChange={(e) => {
+            setSelectedProjectId(e.target.value);
+            setAllRecords([]);
+            setCurrentIndex(0);
+            setError(null);
+          }}
+          style={{
+            width: "100%",
+            maxWidth: "300px",
+            padding: "10px 12px",
+            borderRadius: "6px",
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid #374151",
+            color: "white",
+            fontSize: "14px",
+            cursor: "pointer",
+          }}
+        >
+          {projects.length === 0 ? (
+            <option value="">Loading projects...</option>
+          ) : (
+            projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))
+          )}
+        </select>
+      </div>
+
+      {!selectedProjectId ? (
+        <div
+          style={{
+            textAlign: "center",
+            color: "#9ca3af",
+            padding: "40px 20px",
+          }}
+        >
+          <p>Select a project to view records</p>
+        </div>
+      ) : loading ? (
         <div
           style={{
             textAlign: "center",
@@ -188,7 +265,7 @@ export default function TopBottom10Review() {
         >
           <p>Loading records...</p>
         </div>
-      ) : error ? (
+      ) : error && error !== "No project selected" ? (
         <div
           style={{
             textAlign: "center",
