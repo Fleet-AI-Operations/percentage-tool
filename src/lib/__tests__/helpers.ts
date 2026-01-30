@@ -14,55 +14,55 @@ import { vi } from 'vitest';
  * ```
  */
 export function createMockPrisma() {
-  return {
-    mockPrisma: {
-      project: {
-        findMany: vi.fn(),
-        findUnique: vi.fn(),
-        create: vi.fn(),
-        update: vi.fn(),
-        delete: vi.fn(),
-      },
-      profile: {
-        findMany: vi.fn(),
-        findUnique: vi.fn(),
-        create: vi.fn(),
-        update: vi.fn(),
-        delete: vi.fn(),
-      },
-      dataRecord: {
-        findMany: vi.fn(),
-        findFirst: vi.fn(),
-        findUnique: vi.fn(),
-        create: vi.fn(),
-        update: vi.fn(),
-        delete: vi.fn(),
-        deleteMany: vi.fn(),
-        count: vi.fn(),
-      },
-      ingestJob: {
-        findMany: vi.fn(),
-        findUnique: vi.fn(),
-        create: vi.fn(),
-        update: vi.fn(),
-        delete: vi.fn(),
-      },
-      analyticsJob: {
-        findMany: vi.fn(),
-        findUnique: vi.fn(),
-        create: vi.fn(),
-        update: vi.fn(),
-        delete: vi.fn(),
-      },
-      systemSetting: {
-        findMany: vi.fn(),
-        findUnique: vi.fn(),
-        upsert: vi.fn(),
-      },
-      $transaction: vi.fn((callback) => callback(this)),
-      $disconnect: vi.fn(),
+  const mockPrisma = {
+    project: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
     },
+    profile: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    dataRecord: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
+      count: vi.fn(),
+    },
+    ingestJob: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    analyticsJob: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    systemSetting: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      upsert: vi.fn(),
+    },
+    $transaction: vi.fn((callback) => callback(mockPrisma)),
+    $disconnect: vi.fn(),
   };
+
+  return { mockPrisma };
 }
 
 /**

@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 /**
- * Authentication Middleware
+ * Authentication Proxy
  *
  * Handles authentication and authorization for all routes:
  * - Redirects unauthenticated users to /login
@@ -15,7 +15,7 @@ import { NextResponse, type NextRequest } from 'next/server'
  * - Production: Uses Vercel environment variables with Supabase Cloud
  * - Tests: Uses .env.test with local Supabase
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     let supabaseResponse = NextResponse.next({
         request,
     })
@@ -31,7 +31,7 @@ export async function middleware(request: NextRequest) {
 
     if (!supabaseUrl || !supabaseKey) {
         if (request.nextUrl.pathname !== '/favicon.ico' && !request.nextUrl.pathname.startsWith('/_next')) {
-            console.warn('[Middleware] Supabase config missing or invalid. URL:', supabaseUrl ? 'Set' : 'MISSING', 'Key:', supabaseKey ? 'Set' : 'MISSING')
+            console.warn('[Proxy] Supabase config missing or invalid. URL:', supabaseUrl ? 'Set' : 'MISSING', 'Key:', supabaseKey ? 'Set' : 'MISSING')
         }
         return supabaseResponse
     }
@@ -59,7 +59,7 @@ export async function middleware(request: NextRequest) {
 
     // IMPORTANT: Avoid writing any logic between createServerClient and
     // getUser(). A simple mistake could make it very hard to debug issues
-    // related to the middleware refreshing the user's session.
+    // related to the proxy refreshing the user's session.
 
     const {
         data: { user },
@@ -87,7 +87,7 @@ export async function middleware(request: NextRequest) {
             .single() as any
 
         if (profileError) {
-            console.error(`[Middleware] Profile fetch error for ${user.id}:`, profileError.message)
+            console.error(`[Proxy] Profile fetch error for ${user.id}:`, profileError.message)
         }
 
         if (profile?.role === 'PENDING' && !request.nextUrl.pathname.startsWith('/waiting-approval') && !request.nextUrl.pathname.startsWith('/auth')) {
