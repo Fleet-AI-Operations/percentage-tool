@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { findSimilarRecords } from '@/lib/similarity';
 
@@ -62,62 +63,60 @@ export async function GET(req: NextRequest) {
         : 'desc';
 
     try {
-        // Secure parameterization setup
-        const conditions: string[] = [];
-        const params: (string | number)[] = [];
-        let pIdx = 1;
+        // Build WHERE clause conditions with proper parameterization
+        const whereConditions: Prisma.Sql[] = [];
 
         if (projectId) {
-            conditions.push(`"projectId" = $${pIdx++}`);
-            params.push(projectId);
+            whereConditions.push(Prisma.sql`"projectId" = ${projectId}`);
         }
         if (type) {
-            conditions.push(`type = $${pIdx++}::"RecordType"`);
-            params.push(type);
+            whereConditions.push(Prisma.sql`type = ${type}::"RecordType"`);
         }
         if (category) {
-            conditions.push(`category = $${pIdx++}::"RecordCategory"`);
-            params.push(category);
+            whereConditions.push(Prisma.sql`category = ${category}::"RecordCategory"`);
         }
 
-        const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
         const orderDirection = sortOrder === 'asc' ? 'ASC' : 'DESC';
         const nullsPosition = sortOrder === 'desc' ? 'NULLS LAST' : 'NULLS FIRST';
 
-        let orderByClause: string;
+        // Build ORDER BY clause based on validated sortBy
+        let orderByClause: Prisma.Sql;
 
         switch (sortBy) {
             case 'alignmentScore':
                 // Extract numeric score from alignmentAnalysis text using regex
-                orderByClause = `ORDER BY (
+                orderByClause = Prisma.sql`ORDER BY (
                     CASE WHEN "alignmentAnalysis" IS NOT NULL THEN
                         CAST(COALESCE((regexp_match("alignmentAnalysis", '(?:Alignment Score \\(0-100\\)|Score)[:\\s\\n]*(\\d+)', 'i'))[1], '0') AS INTEGER)
                     ELSE NULL END
-                ) ${orderDirection} ${nullsPosition}`;
+                ) ${Prisma.raw(orderDirection)} ${Prisma.raw(nullsPosition)}`;
                 break;
             case 'environment':
                 // Sort by environment_name from metadata JSON
-                orderByClause = `ORDER BY metadata->>'environment_name' ${orderDirection} ${nullsPosition}`;
+                orderByClause = Prisma.sql`ORDER BY metadata->>'environment_name' ${Prisma.raw(orderDirection)} ${Prisma.raw(nullsPosition)}`;
                 break;
             case 'createdAt':
             default:
-                orderByClause = `ORDER BY "createdAt" ${orderDirection}`;
+                orderByClause = Prisma.sql`ORDER BY "createdAt" ${Prisma.raw(orderDirection)}`;
                 break;
         }
 
-        // Execute query with parameterized values
-        const query = `
+        // Build the complete query with proper parameterization
+        const whereClause = whereConditions.length > 0
+            ? Prisma.sql`WHERE ${Prisma.join(whereConditions, ' AND ')}`
+            : Prisma.empty;
+
+        const query = Prisma.sql`
             SELECT id, "projectId", type, category, source, content, metadata, embedding,
                    "hasBeenReviewed", "isCategoryCorrect", "reviewedBy", "alignmentAnalysis",
                    "ingestJobId", "createdAt", "updatedAt"
             FROM data_records
             ${whereClause}
             ${orderByClause}
-            OFFSET $${pIdx++} LIMIT $${pIdx++}
+            OFFSET ${skip} LIMIT ${take}
         `;
-        params.push(skip, take);
 
-        const records = await prisma.$queryRawUnsafe<DataRecordRow[]>(query, ...params);
+        const records = await prisma.$queryRaw<DataRecordRow[]>(query);
 
         // Use Prisma for count
         const total = await prisma.dataRecord.count({
