@@ -14,14 +14,18 @@ services:
       - "5433:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+      # Mount supabase/setup.sql to auto-run during first startup
+      # PostgreSQL runs SQL files in /docker-entrypoint-initdb.d/ alphabetically
+      - ../supabase/setup.sql:/docker-entrypoint-initdb.d/01-setup.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U pertool"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # Migration Runner - Applies Supabase migrations
+  # Prisma Client Generation
+  # Note: Schema is automatically initialized by postgres container
+  #       This service just generates Prisma Client for the app
   migrations:
     image: node:20-alpine
     container_name: percentage-tool-migrations
@@ -32,13 +36,13 @@ services:
       DATABASE_URL: postgresql://pertool:pertool@db:5432/postgres
     command: >
       sh -c "
-        echo 'Waiting for database...' &&
+        echo 'Waiting for database initialization...' &&
         sleep 5 &&
+        echo 'Installing dependencies...' &&
         npm install &&
+        echo 'Generating Prisma Client...' &&
         npx prisma generate &&
-        echo 'Running migrations...' &&
-        PGPASSWORD=pertool psql -h db -U pertool -d postgres -f /app/supabase/migrations/20240101000000_init_schema.sql &&
-        echo 'Migrations complete!'
+        echo 'Prisma Client ready!'
       "
     depends_on:
       db:

@@ -27,8 +27,9 @@ export function createClient() {
         return null;
     }
 
+    // Use validated variables instead of hardcoding to support both publishable and anon keys
     return createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+        supabaseUrl,
+        supabaseKey
     )
 }
