@@ -15,27 +15,28 @@ export async function POST(request: Request) {
 
   if (error) {
     console.error('[Login] Authentication failed:', error.message)
-    return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(error.message)}`, request.url),
-      { status: 303 }
+    return NextResponse.json(
+      { error: error.message },
+      { status: 401 }
     )
   }
 
   // Verify session was created
   if (!data.session) {
     console.error('[Login] No session created after successful auth')
-    return NextResponse.redirect(
-      new URL('/login?error=Session creation failed', request.url),
-      { status: 303 }
+    return NextResponse.json(
+      { error: 'Session creation failed' },
+      { status: 500 }
     )
   }
 
-  console.log('[Login] Auth successful, session created')
+  console.log('[Login] Auth successful, session created for:', data.user?.email)
 
   // Get all cookies to verify they were set
   const cookieStore = await cookies()
   const allCookies = cookieStore.getAll()
-  console.log('[Login] Cookies after auth:', allCookies.map(c => c.name).join(', '))
+  console.log('[Login] Cookies set:', allCookies.map(c => c.name).join(', '))
 
-  return NextResponse.redirect(new URL('/', request.url), { status: 303 })
+  // Return success - client will handle redirect
+  return NextResponse.json({ success: true }, { status: 200 })
 }

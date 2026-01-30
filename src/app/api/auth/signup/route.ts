@@ -16,14 +16,11 @@ export async function POST(request: Request) {
   })
 
   if (error) {
-    return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(error.message)}`, request.url),
-      { status: 303 }
+    return NextResponse.json(
+      { error: error.message },
+      { status: 400 }
     )
   }
 
-  return NextResponse.redirect(
-    new URL('/login?message=Check your email to continue the signup process.', request.url),
-    { status: 303 }
-  )
+  return NextResponse.json({ success: true }, { status: 200 })
 }

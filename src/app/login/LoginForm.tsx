@@ -1,6 +1,73 @@
 'use client'
 
-export function LoginForm({ error, message }: { error?: string; message?: string }) {
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+
+export function LoginForm({ error: initialError, message }: { error?: string; message?: string }) {
+  const router = useRouter()
+  const [error, setError] = useState(initialError)
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setLoading(true)
+    setError(undefined)
+
+    const formData = new FormData(e.currentTarget)
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || 'Login failed')
+        setLoading(false)
+        return
+      }
+
+      // Success - redirect to home
+      window.location.href = '/'
+    } catch (err) {
+      setError('An unexpected error occurred')
+      setLoading(false)
+    }
+  }
+
+  async function handleSignup(e: React.MouseEvent) {
+    e.preventDefault()
+    setLoading(true)
+
+    const form = (e.target as HTMLElement).closest('form')
+    if (!form) return
+
+    const formData = new FormData(form)
+
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || 'Signup failed')
+        setLoading(false)
+        return
+      }
+
+      // Success - redirect to login with message
+      window.location.href = '/login?message=' + encodeURIComponent('Check your email to continue the signup process.')
+    } catch (err) {
+      setError('An unexpected error occurred')
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="glass-card" style={{ width: '100%', maxWidth: '400px' }}>
       <h1 className="premium-gradient" style={{ marginBottom: '8px', fontSize: '2rem' }}>Welcome Back</h1>
@@ -8,7 +75,7 @@ export function LoginForm({ error, message }: { error?: string; message?: string
         Sign in to access operations tools.
       </p>
 
-      <form action="/api/auth/login" method="POST" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <label htmlFor="email" style={{ fontSize: '0.9rem', fontWeight: '500' }}>Email Address</label>
           <input
@@ -58,18 +125,13 @@ export function LoginForm({ error, message }: { error?: string; message?: string
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-          <button type="submit" className="btn-primary">
-            Sign In
+          <button type="submit" className="btn-primary" disabled={loading}>
+            {loading ? 'Signing in...' : 'Sign In'}
           </button>
           <button
             type="button"
-            onClick={(e) => {
-              const form = e.currentTarget.closest('form');
-              if (form) {
-                form.action = '/api/auth/signup';
-                form.submit();
-              }
-            }}
+            onClick={handleSignup}
+            disabled={loading}
             style={{
               color: 'rgba(255, 255, 255, 0.6)',
               fontSize: '0.9rem',
@@ -77,7 +139,8 @@ export function LoginForm({ error, message }: { error?: string; message?: string
               marginTop: '8px',
               background: 'none',
               border: 'none',
-              cursor: 'pointer'
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.5 : 1
             }}
           >
             Don't have an account? <span style={{ color: 'var(--accent)' }}>Sign Up</span>
