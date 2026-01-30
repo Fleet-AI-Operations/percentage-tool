@@ -98,7 +98,12 @@ export async function GET(request: NextRequest) {
 
         const allRecordsWithEmbeddings = recordsWithEmbeddings.concat(recordsWithoutEmbeddings);
 
-        const similarityResults = allRecordsWithEmbeddings
+        // Filter out records that still don't have valid embeddings after the generation attempt
+        const validRecordsWithEmbeddings = allRecordsWithEmbeddings.filter(
+            record => record.embedding && record.embedding.length > 0
+        );
+
+        const similarityResults = validRecordsWithEmbeddings
             .map(record => {
                 const similarity = cosineSimilarity(
                     selectedEmbedding as number[],
