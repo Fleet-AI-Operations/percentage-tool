@@ -1,6 +1,6 @@
 'use client';
 
-import { ExternalLink, BookOpen, Github, FileText, MessageSquare, Lightbulb, Globe } from 'lucide-react';
+import { ExternalLink, BookOpen, FileText } from 'lucide-react';
 
 interface LinkItem {
     title: string;
