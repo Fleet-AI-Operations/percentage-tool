@@ -5,7 +5,12 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
     try {
         // Parse DB Host/Port from connection string (sanitized)
-        const dbUrl = process.env.DATABASE_URL || '';
+        // Check multiple possible database URL environment variables
+        const dbUrl = process.env.DATABASE_URL ||
+                      process.env.POSTGRES_PRISMA_URL ||
+                      process.env.POSTGRES_URL ||
+                      process.env.POSTGRES_URL_NON_POOLING ||
+                      '';
         let dbHost = 'Unknown';
         let dbPort = 'Unknown';
 
